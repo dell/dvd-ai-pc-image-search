@@ -1,0 +1,6 @@
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\bin\Debug\SemanticImageSearchAIPCT.Common.dll
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\bin\Debug\SemanticImageSearchAIPCT.Common.pdb
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\obj\Debug\SemanticImageSearchAIPCT.Common.csproj.AssemblyReference.cache
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\obj\Debug\SemanticImageSearchAIPCT.Common.csproj.CoreCompileInputs.cache
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\obj\Debug\SemanticImageSearchAIPCT.Common.dll
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.Common\obj\Debug\SemanticImageSearchAIPCT.Common.pdb

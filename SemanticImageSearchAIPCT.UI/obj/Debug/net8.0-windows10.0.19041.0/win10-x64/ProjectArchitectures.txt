@@ -1,0 +1,1 @@
+C:\AIPCTemplate\SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.UI\SemanticImageSearchAIPCT.UI.csproj;x64

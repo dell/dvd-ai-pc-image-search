@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticImageSearchAIPCT.UI", "SemanticImageSearchAIPCT.UI\SemanticImageSearchAIPCT.UI.csproj", "{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticImageSearchAIPCT.Model", "SemanticImageSearchAIPCT.Model\SemanticImageSearchAIPCT.Model.csproj", "{EB24B35D-CCB0-4DAB-B4DA-C61C0EC9F1FA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticImageSearchAIPCT.BusinessLayer", "SemanticImageSearchAIPCT.BusinessLayer\SemanticImageSearchAIPCT.BusinessLayer.csproj", "{FE1B6880-C790-42DD-A44E-347A8591EB99}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticImageSearchAIPCT.Common", "SemanticImageSearchAIPCT.Common\SemanticImageSearchAIPCT.Common.csproj", "{9B17C9ED-7F88-4A5A-A7E2-15F17466EDB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticImageSearchAIPCT.DataAccessLayer", "SemanticImageSearchAIPCT.DataAccessLayer\SemanticImageSearchAIPCT.DataAccessLayer.csproj", "{2B2D407C-BEE5-4A38-8A8B-1CFFE80E5CAE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{EB24B35D-CCB0-4DAB-B4DA-C61C0EC9F1FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB24B35D-CCB0-4DAB-B4DA-C61C0EC9F1FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB24B35D-CCB0-4DAB-B4DA-C61C0EC9F1FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB24B35D-CCB0-4DAB-B4DA-C61C0EC9F1FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE1B6880-C790-42DD-A44E-347A8591EB99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE1B6880-C790-42DD-A44E-347A8591EB99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE1B6880-C790-42DD-A44E-347A8591EB99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE1B6880-C790-42DD-A44E-347A8591EB99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B17C9ED-7F88-4A5A-A7E2-15F17466EDB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B17C9ED-7F88-4A5A-A7E2-15F17466EDB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B17C9ED-7F88-4A5A-A7E2-15F17466EDB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B17C9ED-7F88-4A5A-A7E2-15F17466EDB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B2D407C-BEE5-4A38-8A8B-1CFFE80E5CAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B2D407C-BEE5-4A38-8A8B-1CFFE80E5CAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B2D407C-BEE5-4A38-8A8B-1CFFE80E5CAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B2D407C-BEE5-4A38-8A8B-1CFFE80E5CAE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C79780AF-CBD1-47BF-AC35-2A461EFABEAE}
+	EndGlobalSection
+EndGlobal
