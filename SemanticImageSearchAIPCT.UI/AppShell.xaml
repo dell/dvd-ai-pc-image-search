@@ -3,13 +3,21 @@
     x:Class="SemanticImageSearchAIPCT.UI.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:local="clr-namespace:SemanticImageSearchAIPCT.UI.View"
+    xmlns:views="clr-namespace:SemanticImageSearchAIPCT.UI.Views"
     Shell.FlyoutBehavior="Disabled"
+    Shell.NavBarIsVisible="False"
     Title="Semantic Image Search">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <TabBar>
+        <ShellContent
+            Title="Search"
+            ContentTemplate="{DataTemplate views:SearchPage}"
+            />
+
+        <ShellContent
+            Title="About"
+            ContentTemplate="{DataTemplate views:AboutPage}"
+            />
+    </TabBar>
 
 </Shell>
