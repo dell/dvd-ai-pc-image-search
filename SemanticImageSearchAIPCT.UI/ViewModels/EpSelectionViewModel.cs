@@ -7,13 +7,25 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using SemanticImageSearchAIPCT.UI.Services;
 using SemanticImageSearchAIPCT.UI.Common;
+ 
 
 namespace SemanticImageSearchAIPCT.UI.ViewModels
 {
     partial class EpSelectionViewModel : ObservableObject
     {
+        private readonly IClipInferenceService _clipInferenceService;       
+        private readonly IWhisperEncoderInferenceService _WhisperEncoderService;
+        private readonly IWhisperDecoderInferenceService _WhisperDecoderService;
+
         [ObservableProperty]
         private string selectedEp = "Cpu";
+
+        public EpSelectionViewModel()
+        {
+            _clipInferenceService = ServiceHelper.GetService<IClipInferenceService>();
+            _WhisperEncoderService = ServiceHelper.GetService<IWhisperEncoderInferenceService>();
+            _WhisperDecoderService = ServiceHelper.GetService<IWhisperDecoderInferenceService>();
+        }
 
         [RelayCommand]
         public void SetEp()
@@ -23,7 +35,9 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
             try
             {
                 Enum.TryParse(SelectedEp, false, out ExecutionProviders ep);
-                ClipInferenceService.SetExecutionProvider(ep);
+                _clipInferenceService.SetExecutionProvider(ep);
+                _WhisperEncoderService.SetExecutionProvider(ep);
+                _WhisperDecoderService.SetExecutionProvider(ep);
             }
 
             catch (Exception ex)

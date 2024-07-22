@@ -14,39 +14,69 @@ using SixLabors.ImageSharp.Processing;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SemanticImageSearchAIPCT.UI.Models;
 using SemanticImageSearchAIPCT.UI.Common;
-using Microsoft.UI.Xaml;
 
 namespace SemanticImageSearchAIPCT.UI.Services
 {
-    //TODO: Convert to singleton
-    internal partial class ClipInferenceService
+    internal partial class ClipInferenceService : IClipInferenceService
     {
-        public delegate void QueryStartedEvent(string query);
-        public delegate void QueryCompletedEvent(bool success);
+        public event IClipInferenceService.QueryStartedEvent? QueryStarted;
+        public event IClipInferenceService.QueryCompletedEvent? QueryCompleted;
+        public event IClipInferenceService.ImageProcessingCompletedEvent? ImageProcessingCompleted;
 
-        public static event QueryStartedEvent? QueryStarted;
-        public static event QueryCompletedEvent? QueryCompleted;
-
-        private static readonly string BASE_DIRECTORY = AppDomain.CurrentDomain.BaseDirectory;
+        private readonly string BASE_DIRECTORY = AppDomain.CurrentDomain.BaseDirectory;
 
         [GeneratedRegex(@"\.jpg$|\.png$")]
-        private static partial Regex ImageExtensionsRegex();
+        private partial Regex ImageExtensionsRegex();
 
-        //private static List<System.Numerics.Tensors.Tensor<float>> imageFeatures = [];
-        private static Dictionary<Guid, ImageModel> imageModelsById = [];
-        private static List<Tuple<float, Guid>> querySimilarities = [];
-        private static Dictionary<string, string> qnnOptions = new() { { "backend_path", "QnnHtp.dll" } };
+        private Dictionary<Guid, ImageModel> imageModelsById = [];
+        private List<Tuple<float, Guid>> querySimilarities = [];
+        private Dictionary<string, string> qnnOptions = new() { { "backend_path", "QnnHtp.dll" } };
 
-        private static int datasetSize = 0;
-        private static ExecutionProviders executionProvider = ExecutionProviders.Cpu;
+        private int datasetSize = 0;
+        private ExecutionProviders executionProvider = ExecutionProviders.Cpu;
 
-        public static void SetExecutionProvider(ExecutionProviders ep)
+        public void SetExecutionProvider(ExecutionProviders ep)
         {
             Debug.WriteLine($"Setting ep as {ep}");
             executionProvider = ep;
         }
 
-        public static (string? epName, Dictionary<string, string>? epOptions) UpdateSessionsOptions()
+        public async Task GenerateImageEncodingsAsync(string folderPath)
+        {
+            await Task.Run(() => { 
+                GenerateImageEncodings(folderPath);
+            });
+        }
+
+        public async Task CalculateSimilaritiesAsync(string searchQuery)
+        {
+            await Task.Run(() =>
+            {
+                CalculateSimilarities(searchQuery);
+            });
+        }
+
+        public async Task<List<string>> GetTopNResultsAsync(int n, float threshold = 0.5f)
+        {
+            List<string> imagePaths = [];
+            
+            await Task.Run(() =>
+            {
+                List<Tuple<float, Guid>> topNResults = querySimilarities.Where(i => i.Item1 >= threshold).ToList();
+                topNResults = topNResults.OrderByDescending(i => i.Item1).Take(n).ToList();
+
+                foreach (Tuple<float, Guid> tuple in topNResults)
+                {
+                    Debug.WriteLine($"{tuple.Item1}, {imageModelsById[tuple.Item2].Filename}");
+                    imagePaths.Add(imageModelsById[tuple.Item2].Filename);
+                }
+
+            });
+
+            return imagePaths;
+        }
+
+        private (string? epName, Dictionary<string, string>? epOptions) UpdateSessionsOptions()
         {
             switch (executionProvider)
             {
@@ -65,7 +95,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
         }
 
-        public static void GenerateImageEncodings(string folderPath)
+        public void GenerateImageEncodings(string folderPath)
         {
             try
             {
@@ -83,10 +113,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 Debug.WriteLine($"Found images {imageFiles.Count}");
                 datasetSize = imageFiles.Count;
                 CalculateImageEncodings(imageFiles);
-
-                //CalculateSimilarities("a bag of chips");
-                //List<string> paths = GetTopNResults(2, 0.2f);
-                //Debug.WriteLine($"top 2 results {string.Join(' ', paths)}");
+                Application.Current?.Dispatcher.Dispatch(() => { ImageProcessingCompleted?.Invoke(); });
             }
 
             catch (Exception e)
@@ -96,7 +123,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
         }
 
-        public static int[] TokenizeText(string text)
+        private int[] TokenizeText(string text)
         {
             // Create Tokenizer and tokenize the sentence.
             var tokenizerOnnxPath = BASE_DIRECTORY + ("\\AIModels\\cliptok.onnx");
@@ -156,7 +183,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             return InputIdsInt;
         }
 
-        public static ReadOnlySpan<float> TextEncoder(int[] tokenizedInput)
+        private ReadOnlySpan<float> TextEncoder(int[] tokenizedInput)
         {
             // Create input tensor. OrtValue will not copy, will read from managed memory
             using var input_ids = OrtValue.CreateTensorValueFromMemory<int>(tokenizedInput, new long[] { 1, tokenizedInput.Count() });
@@ -197,11 +224,12 @@ namespace SemanticImageSearchAIPCT.UI.Services
             return normResultAsSpan;
         }
 
-        public static void CalculateSimilarities(string searchQuery)
+        private void CalculateSimilarities(string searchQuery)
         {
             Debug.WriteLine($"Finding best match for query {searchQuery}");
             querySimilarities.Clear();
-            QueryStarted?.Invoke(searchQuery);
+            Application.Current?.Dispatcher.Dispatch(() => { QueryStarted?.Invoke(searchQuery); });
+            
             var textTokens = TokenizeText(searchQuery);
             var textEncodings = TextEncoder(textTokens);
 
@@ -220,26 +248,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 float similarity = TensorPrimitives.CosineSimilarity<float>(textEncodings, imageFeatureSpan);
                 querySimilarities.Add(new Tuple<float, Guid>(similarity, imageModelEntry.Key));
             }
-            QueryCompleted?.Invoke(true);
+            Application.Current?.Dispatcher.Dispatch(() => { QueryCompleted?.Invoke(true); });
         }
 
-        public static List<string> GetTopNResults(int n, float threshold = 0.5f)
-        {
-            //querySimilarities.Sort((x, y) => y.Item1.CompareTo(x.Item1));
-            List<Tuple<float, Guid>> topNResults = querySimilarities.Where(i => i.Item1 >= threshold).ToList();
-            topNResults = topNResults.OrderByDescending(i => i.Item1).Take(n).ToList();
-            List<string> imagePaths = [];
-
-            foreach (Tuple<float, Guid> tuple in topNResults)
-            {
-                Debug.WriteLine($"{tuple.Item1}, {imageModelsById[tuple.Item2].Filename}");
-                imagePaths.Add(imageModelsById[tuple.Item2].Filename);
-            }
-
-            return imagePaths;
-        }
-
-        public static void CalculateImageEncodings(List<string> filenames)
+        public void CalculateImageEncodings(List<string> filenames)
         {
             var textEncoderOnnxPath = BASE_DIRECTORY + ("\\AIModels\\openai_clip-clipimageencoder.qdq.onnx");
             // Model currently does not support batching
@@ -306,7 +318,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             //imageFeatures = resultsArray;
         }
 
-        public static List<ImageModel> BatchComputeImageFeatures(List<string> imageBatch)
+        private List<ImageModel> BatchComputeImageFeatures(List<string> imageBatch)
         {
             List<ImageModel> combinedModels = [];
 
@@ -322,7 +334,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             return combinedModels;
         }
 
-        public static System.Numerics.Tensors.Tensor<float> PreprocessImage(string imagePath)
+        private System.Numerics.Tensors.Tensor<float> PreprocessImage(string imagePath)
         {
             // Load the image as a Rgb24 type
             using Image<Rgb24> image = SixLabors.ImageSharp.Image.Load<Rgb24>(imagePath);
@@ -345,7 +357,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             var mean = new[] { 0.48145466f, 0.4578275f, 0.40821073f };
             var stddev = new[] { 0.26862954f, 0.26130258f, 0.27577711f };
             DenseTensor<float> processedImage = new(new[] { 1, 3, 224, 224 });
-            Debug.WriteLine($"processed image rank is {processedImage.Dimensions[0]}, {processedImage.Dimensions[1]}, {processedImage.Dimensions[2]}, {processedImage.Dimensions[3]}");
+            
             image.ProcessPixelRows(accessor =>
             {
                 for (int y = 0; y < accessor.Height; y++)

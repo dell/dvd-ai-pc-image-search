@@ -1,6 +1,7 @@
 ﻿#if WINDOWS
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using System.Diagnostics;
 using Windows.Graphics;
 #endif
 
@@ -14,7 +15,7 @@ namespace SemanticImageSearchAIPCT.UI
         public App()
         {
             InitializeComponent();
-
+           
             Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow), (handler, view) =>
             {
 #if WINDOWS
@@ -22,8 +23,8 @@ namespace SemanticImageSearchAIPCT.UI
             var nativeWindow = handler.PlatformView;
             nativeWindow.Activate();
             IntPtr windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(nativeWindow);
-            WindowId windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(windowHandle);
-            AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+            WindowId windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
+            AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
             appWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
 
             if (appWindow.Presenter is OverlappedPresenter p)
@@ -39,5 +40,6 @@ namespace SemanticImageSearchAIPCT.UI
 
             MainPage = new AppShell();
         }
+     
     }
 }

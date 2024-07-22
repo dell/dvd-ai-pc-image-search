@@ -18,12 +18,15 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
         public ObservableCollection<string> ImageResults { get; } = [];
 
         private List<string> imageResults = [];
+        private readonly IClipInferenceService _clipInferenceService;
 
         public QueryResultsViewModel()
         {
+            _clipInferenceService = ServiceHelper.GetService<IClipInferenceService>();
+
             //ImageResults.CollectionChanged += HandleImageResultsCollectionChanged;
-            ClipInferenceService.QueryStarted += ClipInferenceService_QueryStartedEventHandler;
-            ClipInferenceService.QueryCompleted += ClipInferenceService_QueryCompletedEventHandler;
+            _clipInferenceService.QueryStarted += ClipInferenceService_QueryStartedEventHandler;
+            _clipInferenceService.QueryCompleted += ClipInferenceService_QueryCompletedEventHandler;
         }
 
         private void ClipInferenceService_QueryCompletedEventHandler(bool success)
@@ -31,14 +34,14 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
             Debug.WriteLine($"received query completed event");
             if (success)
             {
-                MainThread.BeginInvokeOnMainThread(() =>
+                MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    imageResults = ClipInferenceService.GetTopNResults(2, 0.2f);
+                    imageResults = await _clipInferenceService.GetTopNResultsAsync(2, 0.2f);
                     foreach (var image in imageResults)
                     {
                         ImageResults.Add(image);
                     }
-                    //ImageResults = new ObservableCollection<string>(imageResults);
+
                     Debug.WriteLine($"query completed getting results {string.Join(" ", ImageResults)}");
                 });
             }

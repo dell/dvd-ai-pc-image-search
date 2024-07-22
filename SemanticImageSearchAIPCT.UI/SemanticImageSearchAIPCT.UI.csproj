@@ -87,7 +87,7 @@
 		<PackageReference Include="CommunityToolkit.Maui" Version="9.0.2" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
 		<PackageReference Include="FftSharp" Version="2.1.0" />
-		<PackageReference Include="LogMelSpectrogram" Version="1.0.3" />
+		<PackageReference Include="LogMelSpectrogram" Version="1.0.4" />
 		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
@@ -129,7 +129,19 @@
 	  <None Update="AIModels\whisper_base_en-whisperdecoder.onnx">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+	  <None Update="AIModels\whisper_base_en-whisperdecoder.quant.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	  <None Update="AIModels\whisper_base_en-whisperencoder.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\whisper_base_en-whisperencoder.quant.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\whisper_small_en-whisperdecoder.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\whisper_small_en-whisperencoder.onnx">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
 	  <None Update="assets\gpt2.tiktoken">

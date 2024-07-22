@@ -1,88 +1,334 @@
-﻿using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Primitives;
+﻿
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using Microsoft.UI.Xaml.Input;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
 using SemanticImageSearchAIPCT.UI.Common;
+using SemanticImageSearchAIPCT.UI.Tokenizer;
 
-namespace SemanticImageSearchAIPCT.UI.Service
+namespace SemanticImageSearchAIPCT.UI.Services
 {
-    public class WhisperDecoderInferenceService
+    public class WhisperDecoderInferenceService : IWhisperDecoderInferenceService
     {
         private InferenceSession _session;
 
         private Conversion _conversion;
-        public WhisperDecoderInferenceService(string modelPath)
+        private string _decoderModelPath;
+
+        private static ExecutionProviders executionProvider = ExecutionProviders.Cpu;
+        private static Dictionary<string, string> qnnOptions = new() { { "backend_path", "QnnHtp.dll" } };
+        private static readonly int _token_Sot = 50257; //Start of transcript
+        private static readonly int _token_Eot = 50256; //End of transcript      
+        private static readonly int _token_Blank = 220;
+        private static readonly int _token_NoTimestamp = 50362;
+        private static readonly int _token_TimestampBegin = 50363;
+        private static readonly int _token_NoSpeech = 50361;
+        private static readonly double _noSpeechThr = 0.6;
+
+        private static readonly int _meanDecodeLen = 224;
+        private static readonly int _sampleBegin = 1;
+        private double _precision = 0.02; // in seconds
+        private double _maxInitialTimestamp = 1.0; // in seconds
+        private int _maxInitialTimestampIndex;
+        private string _modelDir;
+
+        private int[] k_cache_self_shape;
+        private int[] v_cache_self_shape;
+
+        private float[,,,] k_cache_self;
+        private float[,,,] v_cache_self;
+
+        private int[] logits_shape;
+        private int[] k_cache_shape;
+        private int[] v_cache_shape;
+
+        private float[,,] logits;
+        private float[,,,] k_cache;
+        private float[,,,] v_cache;
+
+        private List<string> _outputKeys;
+        private Dictionary<string, int[]> _outputDimensions;
+        public WhisperDecoderInferenceService()
         {
-            InitModel();
             _conversion = new Conversion();
+            var _baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
+            _modelDir = Path.Combine(_baseDir, "AIModels");
+            _maxInitialTimestampIndex = (int)(_maxInitialTimestamp / _precision);
         }
 
 
-        private void InitModel()
+        public void SetExecutionProvider(ExecutionProviders ep)
         {
-            if (_session != null)
+            Debug.WriteLine($"Setting ep as {ep}");
+            executionProvider = ep;
+            CreateSession();
+        }
+
+        private (string? epName, Dictionary<string, string>? epOptions, string modelpath) UpdateSessionsOptions()
+        {
+            try
             {
-                return;
+                (string? epName, Dictionary<string, string>? epOptions, string modelpath) result;
+
+                Dictionary<string, string> epOptions;
+                switch (executionProvider)
+                {
+                    case ExecutionProviders.QnnCpu:
+                        qnnOptions["backend_path"] = "QnnCpu.dll";
+                        epOptions = qnnOptions;
+                        result = ("QNN", epOptions, "whisper_base_en-whisperdecoder.quant.onnx");
+                        break;
+                    case ExecutionProviders.QnnHtp:
+                        qnnOptions["backend_path"] = "QnnHtp.dll";
+                        epOptions = qnnOptions;
+                        result = ("QNN", epOptions, "whisper_base_en-whisperdecoder.quant.onnx");
+                        break;
+                    default:
+                        result = (null, null, "whisper_base_en-whisperdecoder.onnx");
+                        break;
+
+                }
+                Debug.WriteLine($"epName: {result.epName ?? "CPU"}");
+                if (result.epOptions != null)
+                {
+                    foreach (var option in result.epOptions)
+                    {
+                        Debug.WriteLine($"epOption: {option.Key} = {option.Value}");
+                    }
+                }
+                Debug.WriteLine($"Decoder modelpath: {result.modelpath}");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error Decoder UpdateSessionsOptions: {ex.Message}");
+                throw;
+            }
+        }
+
+        private void CreateSession()
+        {
+            try
+            {
+                using var sessionOptions = new SessionOptions();
+                var (epName, epOptions, modelpath) = UpdateSessionsOptions();
+
+                if (epName != null)
+                {
+                    sessionOptions.AppendExecutionProvider(epName, epOptions);
+                }
+                var _modelAIpath = Path.Combine(_modelDir, modelpath);
+                _session = new InferenceSession(_modelAIpath, sessionOptions);
+                InitializeModelDimensionsDynamically();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error Decoder CreateSession: {ex.Message}");
+                throw;
+            }
+        }
+
+        private void InitializeModelDimensionsDynamically()
+        {
+            try
+            {
+                // Get the shape dynamically
+
+                //Inputs
+                var input0Meta = _session.InputMetadata["k_cache_self"];
+                k_cache_self_shape = input0Meta.Dimensions;
+
+                var input1Meta = _session.InputMetadata["v_cache_self"];
+                v_cache_self_shape = input1Meta.Dimensions;
+
+                k_cache_self = new float[k_cache_self_shape[0], k_cache_self_shape[1], k_cache_self_shape[2], k_cache_self_shape[3]];
+                v_cache_self = new float[v_cache_self_shape[0], v_cache_self_shape[1], v_cache_self_shape[2], v_cache_self_shape[3]];
+
+
+                //outputs
+                var outputMetadata = _session.OutputMetadata;
+
+                _outputKeys = outputMetadata.Keys.ToList();
+                _outputDimensions = new Dictionary<string, int[]>();
+
+                foreach (var name in _outputKeys)
+                {
+                    var dimensions = outputMetadata[name].Dimensions;
+                    _outputDimensions[name] = dimensions;
+
+                    Debug.WriteLine($"Key: {name}, Dimensions: {string.Join(", ", dimensions)}");
+                }
+
+                if (_outputDimensions.ContainsKey("output_0") && _outputDimensions["output_0"].Length == 3)
+                {
+                    logits_shape = _outputDimensions["output_0"];
+                    logits = new float[logits_shape[0], logits_shape[1], logits_shape[2]];
+                }
+                else if (_outputDimensions.ContainsKey("logits") && _outputDimensions["logits"].Length == 3)
+                {
+                    logits_shape = _outputDimensions["logits"];
+                    logits = new float[logits_shape[0], logits_shape[1], logits_shape[2]];
+                }
+                else
+                {
+                    throw new Exception("output_0 or logits dimensions are not valid or not found.");
+                }
+
+                if (_outputDimensions.ContainsKey("output_1") && _outputDimensions["output_1"].Length == 4)
+                {
+                    k_cache_shape = _outputDimensions["output_1"];
+                    k_cache = new float[k_cache_shape[0], k_cache_shape[1], k_cache_shape[2], k_cache_shape[3]];
+                }
+                else if (_outputDimensions.ContainsKey("k_cache") && _outputDimensions["k_cache"].Length == 4)
+                {
+                    k_cache_shape = _outputDimensions["k_cache"];
+                    k_cache = new float[k_cache_shape[0], k_cache_shape[1], k_cache_shape[2], k_cache_shape[3]];
+                }
+                else
+                {
+                    throw new Exception("output_0 or k_cache dimensions are not valid or not found.");
+                }
+                if (_outputDimensions.ContainsKey("output_2") && _outputDimensions["output_2"].Length == 4)
+                {
+                    v_cache_shape = _outputDimensions["output_2"];
+                    v_cache = new float[v_cache_shape[0], v_cache_shape[1], v_cache_shape[2], v_cache_shape[3]];
+                }
+                else if (_outputDimensions.ContainsKey("v_cache") && _outputDimensions["v_cache"].Length == 4)
+                {
+                    v_cache_shape = _outputDimensions["v_cache"];
+                    v_cache = new float[v_cache_shape[0], v_cache_shape[1], v_cache_shape[2], v_cache_shape[3]];
+                }
+                else
+                {
+                    throw new Exception("output_2 or v_cache dimensions are not valid or not found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error Decoder InitializeModelDimensionsDynamically: {ex.Message}");
+                throw;
             }
 
-            string _baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
-            string _modelDir = Path.Combine(_baseDir, "AIModels");
-
-            string _decoderModelPath = Path.Combine(_modelDir, "whisper_base_en-whisperdecoder.onnx");
-
-            using var sessionOptions = new SessionOptions();
-            var providerName = "QNN";
-
-            //sessionOptions.AppendExecutionProvider(providerName, qnnOptions);
-
-            _session = new InferenceSession(_decoderModelPath, sessionOptions);
-            //Debug.WriteLine($"First input name: {_session.InputMetadata.Keys.First()}");
-            //foreach (var inputMeta in _session.InputMetadata)
-            //{
-            //    Debug.WriteLine($"Decoder Key: {inputMeta.Key}");
-            //    Debug.WriteLine($"Decoder Dimensions: {string.Join(",", inputMeta.Value.Dimensions)}");
-            //    Debug.WriteLine($"Decoder ElementType: {inputMeta.Value.ElementType}");
-            //    Debug.WriteLine($"Decoder input is : {inputMeta.Value.Dimensions.Length}, dimensional");
-
-            //}
-            //// List and inspect the output metadata
-            //Debug.WriteLine("Listing Decoder output metadata:");
-            //foreach (var outputMeta in _inferenceSession.OutputMetadata)
-            //{
-            //    Debug.WriteLine($"Decoder Output _name: {outputMeta.Key}, Decoder Output Type: {outputMeta.Value.ElementType}, Decoder Output Dimensions: {string.Join(", ", outputMeta.Value.Dimensions)}");
-            //}
-
-
         }
 
-        public (float[,,] output_0, float[,,,] output_1, float[,,,] output_2) RunInference(int[,] x, int[,] index,
-            float[,,,] k_cache_cross, float[,,,] v_cache_cross, float[,,,] k_cache_self, float[,,,] v_cache_self)
+        public List<int> DecoderInference(
+          float[,,,] k_cache_cross, float[,,,] v_cache_cross)
         {
-            // 2, dimensional
-            var xTensor = new DenseTensor<int>(x.Cast<int>().ToArray(), new[] { x.GetLength(0), x.GetLength(1) });
+            try
+            {
 
-            var indexTensor = new DenseTensor<int>(index.Cast<int>().ToArray(), new[] { index.GetLength(0), index.GetLength(1) });
-
-            // 4, dimensional
-            var kCacheCrossTensor = new DenseTensor<float>(_conversion.Flatten(k_cache_cross), new[] { k_cache_cross.GetLength(0), k_cache_cross.GetLength(1), k_cache_cross.GetLength(2), k_cache_cross.GetLength(3) });
-
-            // 4, dimensional
-            var vCacheCrossTensor = new DenseTensor<float>(_conversion.Flatten(v_cache_cross), new[] { v_cache_cross.GetLength(0), v_cache_cross.GetLength(1), v_cache_cross.GetLength(2), v_cache_cross.GetLength(3) });
-
-            // 4, dimensional
-            var kCacheSelfTensor = new DenseTensor<float>(_conversion.Flatten(k_cache_self), new[] { k_cache_self.GetLength(0), k_cache_self.GetLength(1), k_cache_self.GetLength(2), k_cache_self.GetLength(3) });
-
-            // 4, dimensional
-            var vCacheSelfTensor = new DenseTensor<float>(_conversion.Flatten(v_cache_self), new[] { v_cache_self.GetLength(0), v_cache_self.GetLength(1), v_cache_self.GetLength(2), v_cache_self.GetLength(3) });
+                if (_session == null)
+                {
+                    CreateSession();
+                }
 
 
-            var inputs = new List<NamedOnnxValue> {
+                int[,] x = new int[,] { { _token_Sot } };
+                List<int> decoded_tokens_list = new List<int> { _token_Sot };
+                int sampleLen = _meanDecodeLen;
+
+                //float[,,,] k_cache_self = new float[6, 8, 64, 224];
+                //float[,,,] v_cache_self = new float[6, 8, 224, 64];
+                Debug.WriteLine($"k_cache_self: {k_cache_self_shape[0]}, {k_cache_self_shape[1]}, {k_cache_self_shape[2]}, {k_cache_self_shape[3]}");
+                Debug.WriteLine($"v_cache_self: {v_cache_self_shape[0]}, {v_cache_self_shape[1]}, {v_cache_self_shape[2]}, {v_cache_self_shape[3]}");
+
+
+                Debug.WriteLine($"logits: {logits_shape[0]}, {logits_shape[1]}, {logits_shape[2]}");
+                Debug.WriteLine($"k_cache: {k_cache_shape[0]}, {k_cache_shape[1]}, {k_cache_shape[2]}, {k_cache_shape[3]}");
+                Debug.WriteLine($"v_cach: {v_cache_shape[0]}, {v_cache_shape[1]}, {v_cache_shape[2]}, {v_cache_shape[3]}");
+
+                float[,,] logits;
+                float sumLogprobs = 0;
+
+                for (int i = 0; i < sampleLen; i++)
+                {
+                    int[,] index = new int[,] { { i } };
+                    bool _sessionCreated = i != 0;
+
+                    var decoder_out = RunInference(x, index, k_cache_cross, v_cache_cross, k_cache_self, v_cache_self, _session);
+
+                    logits = decoder_out.Item1;
+                    k_cache_self = decoder_out.Item2;
+                    v_cache_self = decoder_out.Item3;
+
+                    float[] lastTokenLogits = new float[logits.GetLength(2)];
+                    for (int j = 0; j < logits.GetLength(2); j++)
+                    {
+                        lastTokenLogits[j] = logits[0, logits.GetLength(1) - 1, j];
+                    }
+
+                    //Applying filters.
+                    if (i == 0)
+                    {
+                        lastTokenLogits[_token_Eot] = float.NegativeInfinity;
+                        lastTokenLogits[_token_Blank] = float.NegativeInfinity;
+                    }
+                    //SuppressTokens
+                    foreach (var token in Constants.NON_SPEECH_TOKENS)
+                    {
+                        lastTokenLogits[token] = float.NegativeInfinity;
+                    }
+
+                    (float[] updatedLogits, float[] logprobs) = ApplyTimestampRules(lastTokenLogits, decoded_tokens_list);
+
+                    if (i == 0)
+                    {
+                        //detect no_speech
+                        var noSpeechProb = Math.Exp(logprobs[_token_NoSpeech]);
+                        if (noSpeechProb > _noSpeechThr)
+                        {
+                            break;
+                        }
+                    }
+                    int nextToken = Array.IndexOf(updatedLogits, updatedLogits.Max());
+
+                    if (nextToken == _token_Eot)
+                    {
+                        break;
+                    }
+
+                    sumLogprobs += logprobs[nextToken];
+
+                    x = new int[,] { { nextToken } };
+                    decoded_tokens_list.Add(nextToken);
+
+
+                }
+                return decoded_tokens_list;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"DecoderInference: {ex.Message}");
+                throw;
+
+            }
+
+        }
+        public (float[,,] output_0, float[,,,] output_1, float[,,,] output_2) RunInference(int[,] x, int[,] index,
+        float[,,,] k_cache_cross, float[,,,] v_cache_cross, float[,,,] k_cache_self, float[,,,] v_cache_self, InferenceSession _session)
+        {
+
+            try
+            {
+                // 2, dimensional
+                var xTensor = new DenseTensor<int>(x.Cast<int>().ToArray(), new[] { x.GetLength(0), x.GetLength(1) });
+
+                var indexTensor = new DenseTensor<int>(index.Cast<int>().ToArray(), new[] { index.GetLength(0), index.GetLength(1) });
+
+                // 4, dimensional
+                var kCacheCrossTensor = new DenseTensor<float>(_conversion.Flatten(k_cache_cross), new[] { k_cache_cross.GetLength(0), k_cache_cross.GetLength(1), k_cache_cross.GetLength(2), k_cache_cross.GetLength(3) });
+
+                // 4, dimensional
+                var vCacheCrossTensor = new DenseTensor<float>(_conversion.Flatten(v_cache_cross), new[] { v_cache_cross.GetLength(0), v_cache_cross.GetLength(1), v_cache_cross.GetLength(2), v_cache_cross.GetLength(3) });
+
+                // 4, dimensional
+                var kCacheSelfTensor = new DenseTensor<float>(_conversion.Flatten(k_cache_self), new[] { k_cache_self.GetLength(0), k_cache_self.GetLength(1), k_cache_self.GetLength(2), k_cache_self.GetLength(3) });
+
+                // 4, dimensional
+                var vCacheSelfTensor = new DenseTensor<float>(_conversion.Flatten(v_cache_self), new[] { v_cache_self.GetLength(0), v_cache_self.GetLength(1), v_cache_self.GetLength(2), v_cache_self.GetLength(3) });
+
+
+                var inputs = new List<NamedOnnxValue> {
                 NamedOnnxValue.CreateFromTensor("x", xTensor),
                 NamedOnnxValue.CreateFromTensor("index", indexTensor),
                 NamedOnnxValue.CreateFromTensor("k_cache_cross", kCacheCrossTensor),
@@ -90,29 +336,148 @@ namespace SemanticImageSearchAIPCT.UI.Service
                 NamedOnnxValue.CreateFromTensor("k_cache_self", kCacheSelfTensor),
                 NamedOnnxValue.CreateFromTensor("v_cache_self", vCacheSelfTensor) };
 
-            float[,,] output_0 = new float[1, 1, 51864];
-            float[,,,] output_1 = new float[6, 8, 64, 224];
-            float[,,,] output_2 = new float[6, 8, 224, 64];
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
+
+                List<string> outputs = _outputKeys;
+                using var runOptions = new RunOptions();
+                results = _session.Run(inputs, outputs);
+
+                var logits_tensor = results.First(r => r.Name == _outputKeys[0]).AsTensor<float>();
+                var k_cache_tensor = results.First(r => r.Name == _outputKeys[1]).AsTensor<float>();
+                var v_cache_tensor = results.First(r => r.Name == _outputKeys[2]).AsTensor<float>();
+
+                logits = _conversion.To3DArray(logits_tensor, logits_shape[0], logits_shape[1], logits_shape[2]);
+                k_cache = _conversion.To4DArray(k_cache_tensor, k_cache_shape[0], k_cache_shape[1], k_cache_shape[2], k_cache_shape[3]);
+                v_cache = _conversion.To4DArray(k_cache_tensor, v_cache_shape[0], v_cache_shape[1], v_cache_shape[2], v_cache_shape[3]);
+
+                return (logits, k_cache, v_cache);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Decoder RunInference: {ex.Message}");
+                throw ex;
+
+            }
+        }
+
+        private (float[], float[]) ApplyTimestampRules(float[] logits, List<int> tokens)
+        {
+            try
+            {
+                logits[_token_NoTimestamp] = float.NegativeInfinity;
+
+                var seq = tokens.Skip(_sampleBegin).ToList();
+                bool lastWasTimestamp = seq.Count >= 1 && seq.Last() >= _token_TimestampBegin;
+                bool penultimateWasTimestamp = seq.Count < 2 || seq[^2] >= _token_TimestampBegin;
+
+                if (lastWasTimestamp)
+                {
+                    if (penultimateWasTimestamp) // has to be non-timestamp
+                    {
+                        for (int i = _token_TimestampBegin; i < logits.Length; i++)
+                            logits[i] = float.NegativeInfinity;
+                    }
+                    else // cannot be normal text tokens
+                    {
+                        for (int i = 0; i < _token_Eot; i++)
+                            logits[i] = float.NegativeInfinity;
+                    }
+                }
+
+                var timestamps = tokens.Where(t => t >= _token_TimestampBegin).ToList();
+                if (timestamps.Count > 0)
+                {
+                    int timestampLast = lastWasTimestamp && !penultimateWasTimestamp ? timestamps.Last() : timestamps.Last() + 1;
+                    for (int i = _token_TimestampBegin; i < timestampLast; i++)
+                        logits[i] = float.NegativeInfinity;
+                }
+
+                if (tokens.Count == _sampleBegin)
+                {
+                    // Suppress generating non-timestamp tokens at the beginning
+                    for (int i = 0; i < _token_TimestampBegin; i++)
+                        logits[i] = float.NegativeInfinity;
+
+                    // Apply the `max_initial_timestamp` option
+                    int lastAllowed = _token_TimestampBegin + _maxInitialTimestampIndex;
+                    for (int i = lastAllowed + 1; i < logits.Length; i++)
+                        logits[i] = float.NegativeInfinity;
+                }
+
+                // Calculate log probabilities
 
 
-            IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
 
-            List<string> outputs = new List<string> { "output_0", "output_1", "output_2" };
-            using var runOptions = new RunOptions();
+                float[] logprobs = LogSoftmax(logits);
+                float timestampLogprob = LogSumExp(logprobs.Skip(_token_TimestampBegin).ToArray());
+                float maxTextTokenLogprob = logprobs.Take(_token_TimestampBegin).Max();
 
-            results = _session.Run(inputs, outputs);
+                if (timestampLogprob > maxTextTokenLogprob)
+                {
+                    // Mask out all but timestamp tokens
+                    for (int i = 0; i < _token_TimestampBegin; i++)
+                        logits[i] = float.NegativeInfinity;
+                }
 
-            var output_0_tensor = results.First(r => r.Name == "output_0").AsTensor<float>();
-            var output_1_tensor = results.First(r => r.Name == "output_1").AsTensor<float>();
-            var output_2_tensor = results.First(r => r.Name == "output_2").AsTensor<float>();
+                return (logits, logprobs);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Decoder ApplyTimestampRules: {ex.Message}");
+                throw ex;
 
-            output_0 = _conversion.To3DArray(output_0_tensor, 1, 1, 51864);
-            output_1 = _conversion.To4DArray(output_1_tensor, 6, 8, 64, 224);
-            output_2 = _conversion.To4DArray(output_2_tensor, 6, 8, 224, 64);
-            return (output_0, output_1, output_2);
+            }
+        }
 
+        public static float LogSumExp(float[] logprobs)
+        {
+            try
+            {
+                // Find the maximum log probability to use for scaling to avoid numerical instability
+                float maxLogProb = logprobs.Max();
 
-        }        
+                // Compute the scaled sum of exponentials
+                double sumExp = logprobs.Select(logprob => Math.Exp(logprob - maxLogProb)).Sum();
 
+                // Return the log of the computed sum plus the scaling factor we subtracted initially
+                return (float)(Math.Log(sumExp) + maxLogProb);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Decoder LogSumExp: {ex.Message}");
+                throw ex;
+
+            }
+        }
+
+        public static float[] LogSoftmax(float[] logits)
+        {
+            try
+            {
+                float maxLogit = logits.Max(); // For numerical stability, subtract the max logit
+                float[] exps = new float[logits.Length];
+                float sumExps = 0;
+
+                for (int i = 0; i < logits.Length; i++)
+                {
+                    exps[i] = (float)Math.Exp(logits[i] - maxLogit);
+                    sumExps += exps[i];
+                }
+
+                float[] logSoftmax = new float[logits.Length];
+                for (int i = 0; i < logits.Length; i++)
+                {
+                    logSoftmax[i] = (float)Math.Log(exps[i] / sumExps);
+                }
+
+                return logSoftmax;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Decoder LogSoftmax: {ex.Message}");
+                throw ex;
+
+            }
+        }
     }
 }

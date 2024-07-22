@@ -1,5 +1,8 @@
 ﻿
 using CommunityToolkit.Maui;
+using SemanticImageSearchAIPCT.UI.Controls;
+using SemanticImageSearchAIPCT.UI.Services;
+using System.Diagnostics;
 
 namespace SemanticImageSearchAIPCT.UI
 {
@@ -7,6 +10,12 @@ namespace SemanticImageSearchAIPCT.UI
     {
         public static MauiApp CreateMauiApp()
         {
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+
+                Debug.WriteLine($"Global exception caught: {e.ExceptionObject}");
+            };
+
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
@@ -16,11 +25,22 @@ namespace SemanticImageSearchAIPCT.UI
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
-   
-            builder.Services.AddSingleton<SearchViewModel>();
-             
 
-            return builder.Build();
+            builder.Services.AddSingleton<IClipInferenceService, ClipInferenceService>();
+            builder.Services.AddSingleton<IWhisperEncoderInferenceService, WhisperEncoderInferenceService>();
+            builder.Services.AddSingleton<IWhisperDecoderInferenceService, WhisperDecoderInferenceService>();
+            builder.Services.AddSingleton<ImportImagesViewModel>();
+            builder.Services.AddSingleton<SearchViewModel>();
+            builder.Services.AddSingleton<ImportFolderView>();
+            builder.Services.AddSingleton<SearchPage>();
+
+            //builder.Services.AddSingleton<MainPage>();
+
+            var app = builder.Build();
+
+            ServiceHelper.Initialize(app.Services);
+
+            return app;
         }
     }
 }

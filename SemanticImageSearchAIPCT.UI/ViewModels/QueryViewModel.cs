@@ -25,14 +25,16 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
         public ObservableCollection<string> ImageResults { get; private set; } = [];
 
         private List<string> imageResults = [];
+        private readonly IClipInferenceService _clipInferenceService;
 
         public QueryViewModel()
         {
+            _clipInferenceService = ServiceHelper.GetService<IClipInferenceService>();
             //ImageResults.CollectionChanged += HandleImageResultsCollectionChanged;
         }
 
         [RelayCommand]
-        public void StartQuery()
+        public async Task StartQuery()
         {
             Debug.WriteLine($"Starting query with {QueryText}");
             if (QueryText == null)
@@ -40,7 +42,7 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
                 return;
             }
 
-            ClipInferenceService.CalculateSimilarities(QueryText);
+            await _clipInferenceService.CalculateSimilaritiesAsync(QueryText);
         }
 
         [RelayCommand]
