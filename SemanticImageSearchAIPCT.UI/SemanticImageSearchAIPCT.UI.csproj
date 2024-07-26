@@ -59,6 +59,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Helper\**" />
+	  <EmbeddedResource Remove="Helper\**" />
+	  <MauiCss Remove="Helper\**" />
+	  <MauiXaml Remove="Helper\**" />
+	  <None Remove="Helper\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <Compile Remove="Common\FftOperations.cs" />
 	  <Compile Remove="Common\Mel.cs" />
 	  <Compile Remove="Common\Transform.cs" />
@@ -102,11 +110,6 @@
 		<PackageReference Include="Plugin.Maui.Audio" Version="3.0.0" />
 		<PackageReference Include="ScottPlot" Version="5.0.36" />
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Helper\" />
-	</ItemGroup>
-
 	<ItemGroup>
 	  <MauiXaml Update="Controls\FilterTextView.xaml">
 	    <Generator>MSBuild:Compile</Generator>
@@ -150,6 +153,10 @@
 	  <None Update="assets\mel_80.bin">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PRIResource Remove="Helper\**" />
 	</ItemGroup>
 
 </Project>

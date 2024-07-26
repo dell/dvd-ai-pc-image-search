@@ -1,12 +1,12 @@
-﻿ 
+﻿
 using System.Diagnostics;
- 
+
 namespace SemanticImageSearchAIPCT.UI.Audio
 {
     public class ValidationService
     {
 
-        public  float[][] EnsureCorrectDimensions(float[][] melSpectrogram, int targetFrames)
+        public float[][] EnsureCorrectDimensions(float[][] melSpectrogram, int targetFrames)
         {
             int currentFrames = melSpectrogram.Length;
             int melChannels = melSpectrogram[0].Length;
@@ -40,7 +40,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
             return correctedSpectrogram;
         }
 
-        public  bool CheckMelSpectrogram(float[][] melSpectrogram)
+        public bool CheckMelSpectrogram(float[][] melSpectrogram)
         {
             // Iterate through each frame in the spectrogram
             foreach (var frame in melSpectrogram)

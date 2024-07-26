@@ -1,8 +1,5 @@
-﻿using MathNet.Numerics.IntegralTransforms;
-using MathNet.Numerics;
-using System.Diagnostics;
-using SemanticImageSearchAIPCT.UI.WinUI;
-using System.Text.RegularExpressions;
+﻿using MathNet.Numerics;
+using MathNet.Numerics.IntegralTransforms;
 
 
 namespace SemanticImageSearchAIPCT.UI.Audio
@@ -32,7 +29,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
         {
             // Calculate the number of frames in the spectrogram
             int numFrames = 1 + (audioData.Length - fftSize) / hopSize;
-            float[][] melSpectrogram = new float[numFrames][];          
+            float[][] melSpectrogram = new float[numFrames][];
 
             //double[] window = MathNet.Numerics.Window.Hamming(fftSize);   
 
@@ -164,14 +161,14 @@ namespace SemanticImageSearchAIPCT.UI.Audio
             {
                 double mel = minMel + (maxMel - minMel) / (numMelFilters + 1) * i;
                 melPoints[i] = TruncateToTwoDecimalPlaces(MelToHz(mel));
-            }        
+            }
 
             // Convert Mel filter points to FFT bin numbers
             double[] bin = new double[melPoints.Length];
-      
+
             for (int i = 0; i < melPoints.Length; i++)
             {
-                bin[i] = Math.Floor((fftSize + 1) * melPoints[i] / sampleRate);              
+                bin[i] = Math.Floor((fftSize + 1) * melPoints[i] / sampleRate);
 
             }
 

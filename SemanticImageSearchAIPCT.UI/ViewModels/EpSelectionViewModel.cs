@@ -1,19 +1,14 @@
 ﻿using CommunityToolkit.Mvvm.Input;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using SemanticImageSearchAIPCT.UI.Services;
 using SemanticImageSearchAIPCT.UI.Common;
- 
+using SemanticImageSearchAIPCT.UI.Services;
+using System.Diagnostics;
+
 
 namespace SemanticImageSearchAIPCT.UI.ViewModels
 {
     partial class EpSelectionViewModel : ObservableObject
     {
-        private readonly IClipInferenceService _clipInferenceService;       
+        private readonly IClipInferenceService _clipInferenceService;
         private readonly IWhisperEncoderInferenceService _WhisperEncoderService;
         private readonly IWhisperDecoderInferenceService _WhisperDecoderService;
 
@@ -45,5 +40,5 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
                 Debug.WriteLine($"Error parsing ep option {ex}");
             }
         }
-}
+    }
 }

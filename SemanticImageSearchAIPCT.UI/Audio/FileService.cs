@@ -6,7 +6,6 @@ namespace SemanticImageSearchAIPCT.UI.Audio
     using System;
     using System.Diagnostics;
     using System.IO;
-    using System.Threading.Tasks;
 
     public class FileService
     {
@@ -38,7 +37,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
             }
         }
 
-        public  void SaveMelSpectrogramToFile(float[][] logMelSpectrogram, string directoryPath)
+        public void SaveMelSpectrogramToFile(float[][] logMelSpectrogram, string directoryPath)
         {
             // Ensure the directory exists
             Directory.CreateDirectory(directoryPath);

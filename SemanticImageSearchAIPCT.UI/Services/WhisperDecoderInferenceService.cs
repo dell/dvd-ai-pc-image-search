@@ -9,15 +9,18 @@ namespace SemanticImageSearchAIPCT.UI.Services
 {
     public class WhisperDecoderInferenceService : IWhisperDecoderInferenceService
     {
-        private InferenceSession _session;
+        #region Fields
 
+        private InferenceSession _session;
         private Conversion _conversion;
         private string _decoderModelPath;
 
         private static ExecutionProviders executionProvider = ExecutionProviders.Cpu;
         private static Dictionary<string, string> qnnOptions = new() { { "backend_path", "QnnHtp.dll" } };
-        private static readonly int _token_Sot = 50257; //Start of transcript
-        private static readonly int _token_Eot = 50256; //End of transcript      
+        private static readonly int _token_Sot = 50257;
+        private static readonly int _token_Eot = 50256;
+
+        // Whisper constants
         private static readonly int _token_Blank = 220;
         private static readonly int _token_NoTimestamp = 50362;
         private static readonly int _token_TimestampBegin = 50363;
@@ -47,6 +50,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
 
         private List<string> _outputKeys;
         private Dictionary<string, int[]> _outputDimensions;
+
+        #endregion
+
+        #region Constructor
         public WhisperDecoderInferenceService()
         {
             _conversion = new Conversion();
@@ -55,7 +62,9 @@ namespace SemanticImageSearchAIPCT.UI.Services
             _maxInitialTimestampIndex = (int)(_maxInitialTimestamp / _precision);
         }
 
+        #endregion
 
+        #region Execution Provider Setup
         public void SetExecutionProvider(ExecutionProviders ep)
         {
             Debug.WriteLine($"Setting ep as {ep}");
@@ -106,6 +115,13 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
         }
 
+        #endregion
+
+        #region Inference Session Management
+
+        /// <summary>
+        /// Creates and initializes an ONNX inference session for the Whisper model.
+        /// </summary>
         private void CreateSession()
         {
             try
@@ -119,6 +135,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 }
                 var _modelAIpath = Path.Combine(_modelDir, modelpath);
                 _session = new InferenceSession(_modelAIpath, sessionOptions);
+
+                // Initialize model dimensions dynamically based on the model metadata
                 InitializeModelDimensionsDynamically();
             }
             catch (Exception ex)
@@ -128,6 +146,9 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
         }
 
+        /// <summary>
+        /// Dynamically initializes the dimensions for the model inputs and outputs based on the model metadata.
+        /// </summary>
         private void InitializeModelDimensionsDynamically()
         {
             try
@@ -145,7 +166,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 v_cache_self = new float[v_cache_self_shape[0], v_cache_self_shape[1], v_cache_self_shape[2], v_cache_self_shape[3]];
 
 
-                //outputs
+                ////outputs
                 var outputMetadata = _session.OutputMetadata;
 
                 _outputKeys = outputMetadata.Keys.ToList();
@@ -211,40 +232,40 @@ namespace SemanticImageSearchAIPCT.UI.Services
 
         }
 
+        #endregion
+
+        #region Inference Methods
+        /// <summary>
+        /// Performs the decoding inference using the provided k_cache_cross and v_cache_cross outputs from the encoder.
+        /// </summary>
+        /// <param name="k_cache_cross">The k_cache_cross output from the encoder as a 4-dimensional float array.</param>
+        /// <param name="v_cache_cross">The v_cache_cross output from the encoder as a 4-dimensional float array.</param>
+        /// <returns>A list of decoded tokens as integers.</returns>
         public List<int> DecoderInference(
           float[,,,] k_cache_cross, float[,,,] v_cache_cross)
         {
             try
             {
-
+                // Ensure the inference session is created
                 if (_session == null)
                 {
                     CreateSession();
                 }
-
-
+                // Initialize the input token and decoded tokens list
                 int[,] x = new int[,] { { _token_Sot } };
                 List<int> decoded_tokens_list = new List<int> { _token_Sot };
                 int sampleLen = _meanDecodeLen;
 
-                //float[,,,] k_cache_self = new float[6, 8, 64, 224];
-                //float[,,,] v_cache_self = new float[6, 8, 224, 64];
-                Debug.WriteLine($"k_cache_self: {k_cache_self_shape[0]}, {k_cache_self_shape[1]}, {k_cache_self_shape[2]}, {k_cache_self_shape[3]}");
-                Debug.WriteLine($"v_cache_self: {v_cache_self_shape[0]}, {v_cache_self_shape[1]}, {v_cache_self_shape[2]}, {v_cache_self_shape[3]}");
-
-
-                Debug.WriteLine($"logits: {logits_shape[0]}, {logits_shape[1]}, {logits_shape[2]}");
-                Debug.WriteLine($"k_cache: {k_cache_shape[0]}, {k_cache_shape[1]}, {k_cache_shape[2]}, {k_cache_shape[3]}");
-                Debug.WriteLine($"v_cach: {v_cache_shape[0]}, {v_cache_shape[1]}, {v_cache_shape[2]}, {v_cache_shape[3]}");
-
                 float[,,] logits;
                 float sumLogprobs = 0;
 
+                // Loop through the sample length to perform inference step-by-step
                 for (int i = 0; i < sampleLen; i++)
                 {
                     int[,] index = new int[,] { { i } };
                     bool _sessionCreated = i != 0;
 
+                    // Run inference and get logits and updated cache values
                     var decoder_out = RunInference(x, index, k_cache_cross, v_cache_cross, k_cache_self, v_cache_self, _session);
 
                     logits = decoder_out.Item1;
@@ -298,18 +319,31 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"DecoderInference: {ex.Message}");
+                Debug.WriteLine(ex.Message);
                 throw;
-
             }
 
         }
+
+        /// <summary>
+        /// Runs the inference on the Whisper decoder model using the provided input tensors and cache values.
+        /// </summary>
+        /// <param name="x">The input token tensor as a 2-dimensional int array.</param>
+        /// <param name="index">The index tensor as a 2-dimensional int array.</param>
+        /// <param name="k_cache_cross">The k_cache_cross tensor from the encoder as a 4-dimensional float array.</param>
+        /// <param name="v_cache_cross">The v_cache_cross tensor from the encoder as a 4-dimensional float array.</param>
+        /// <param name="k_cache_self">The k_cache_self tensor from the decoder as a 4-dimensional float array.</param>
+        /// <param name="v_cache_self">The v_cache_self tensor from the decoder as a 4-dimensional float array.</param>
+        /// <param name="session">The ONNX inference session.</param>
+        /// <returns>A tuple containing the logits, updated k_cache_self, and updated v_cache_self tensors.</returns>
         public (float[,,] output_0, float[,,,] output_1, float[,,,] output_2) RunInference(int[,] x, int[,] index,
         float[,,,] k_cache_cross, float[,,,] v_cache_cross, float[,,,] k_cache_self, float[,,,] v_cache_self, InferenceSession _session)
         {
 
             try
             {
+                // Convert input arrays to tensors
+
                 // 2, dimensional
                 var xTensor = new DenseTensor<int>(x.Cast<int>().ToArray(), new[] { x.GetLength(0), x.GetLength(1) });
 
@@ -327,43 +361,55 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 // 4, dimensional
                 var vCacheSelfTensor = new DenseTensor<float>(_conversion.Flatten(v_cache_self), new[] { v_cache_self.GetLength(0), v_cache_self.GetLength(1), v_cache_self.GetLength(2), v_cache_self.GetLength(3) });
 
-
+                // Prepare the input list for the inference session
                 var inputs = new List<NamedOnnxValue> {
                 NamedOnnxValue.CreateFromTensor("x", xTensor),
                 NamedOnnxValue.CreateFromTensor("index", indexTensor),
                 NamedOnnxValue.CreateFromTensor("k_cache_cross", kCacheCrossTensor),
                 NamedOnnxValue.CreateFromTensor("v_cache_cross", vCacheCrossTensor),
                 NamedOnnxValue.CreateFromTensor("k_cache_self", kCacheSelfTensor),
-                NamedOnnxValue.CreateFromTensor("v_cache_self", vCacheSelfTensor) };
+                NamedOnnxValue.CreateFromTensor("v_cache_self", vCacheSelfTensor) }; 
 
                 IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = null;
 
+                // Define the output keys and run option
                 List<string> outputs = _outputKeys;
                 using var runOptions = new RunOptions();
+
+                // Run the inference session
                 results = _session.Run(inputs, outputs);
 
-                var logits_tensor = results.First(r => r.Name == _outputKeys[0]).AsTensor<float>();
-                var k_cache_tensor = results.First(r => r.Name == _outputKeys[1]).AsTensor<float>();
-                var v_cache_tensor = results.First(r => r.Name == _outputKeys[2]).AsTensor<float>();
+                // Extract and convert the output tensors
+                var output_0_tensor = results.First(r => r.Name == _outputKeys[0]).AsTensor<float>();
+                var output_1_tensor = results.First(r => r.Name == _outputKeys[1]).AsTensor<float>();
+                var output_2_tensor = results.First(r => r.Name == _outputKeys[2]).AsTensor<float>();
 
-                logits = _conversion.To3DArray(logits_tensor, logits_shape[0], logits_shape[1], logits_shape[2]);
-                k_cache = _conversion.To4DArray(k_cache_tensor, k_cache_shape[0], k_cache_shape[1], k_cache_shape[2], k_cache_shape[3]);
-                v_cache = _conversion.To4DArray(k_cache_tensor, v_cache_shape[0], v_cache_shape[1], v_cache_shape[2], v_cache_shape[3]);
+                var output_0 = _conversion.To3DArray(output_0_tensor, logits_shape[0], logits_shape[1], logits_shape[2]);
+                var output_1 = _conversion.To4DArray(output_1_tensor, k_cache_shape[0], k_cache_shape[1], k_cache_shape[2], k_cache_shape[3]);
+                var output_2 = _conversion.To4DArray(output_2_tensor, v_cache_shape[0], v_cache_shape[1], v_cache_shape[2], v_cache_shape[3]);
 
-                return (logits, k_cache, v_cache);
+                // Return the results
+                return (output_0, output_1, output_2);
+
+
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Decoder RunInference: {ex.Message}");
-                throw ex;
+                Debug.WriteLine(ex.Message);
+                throw;
 
             }
         }
+        #endregion
 
+        #region Helper Methods
         private (float[], float[]) ApplyTimestampRules(float[] logits, List<int> tokens)
         {
             try
             {
+
+
+
                 logits[_token_NoTimestamp] = float.NegativeInfinity;
 
                 var seq = tokens.Skip(_sampleBegin).ToList();
@@ -423,9 +469,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Decoder ApplyTimestampRules: {ex.Message}");
-                throw ex;
-
+                Debug.WriteLine(ex.Message);
+                throw;
             }
         }
 
@@ -444,9 +489,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Decoder LogSumExp: {ex.Message}");
-                throw ex;
-
+                Debug.WriteLine(ex.Message);
+                throw;
             }
         }
 
@@ -474,10 +518,11 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Decoder LogSoftmax: {ex.Message}");
-                throw ex;
-
+                Debug.WriteLine(ex.Message);
+                throw;
             }
         }
+
+        #endregion
     }
 }
