@@ -61,6 +61,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                         break;
                     case ExecutionProviders.QnnHtp:
                         qnnOptions["backend_path"] = "QnnHtp.dll";
+                        qnnOptions["enable_htp_fp16_precision"] = "1";
                         epOptions = qnnOptions;
                         result = ("QNN", epOptions, "whisper_base_en-whisperencoder.quant.onnx");
                         break;

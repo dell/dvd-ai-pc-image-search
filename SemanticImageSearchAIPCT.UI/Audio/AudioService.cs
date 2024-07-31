@@ -11,7 +11,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
         private List<byte> _audioBuffer = new List<byte>();
 
         // Chunk duration constraints    
-        private const float SilenceThreshold = 0.01f;
+        private const float SilenceThreshold = 0.02f;
         private const int _chunkSizeMilliseconds = 3000; // 3 seconds 
         private readonly int _sampleRate;
         private readonly int _bytesPerSample;
