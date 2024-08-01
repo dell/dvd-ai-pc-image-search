@@ -1,4 +1,5 @@
 ﻿using NAudio.Wave;
+using SemanticImageSearchAIPCT.UI.Services;
 using System.Diagnostics;
 namespace SemanticImageSearchAIPCT.UI.Audio
 {
@@ -115,6 +116,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
                 if (bytes.Length % 2 != 0)
                 {
                     Debug.WriteLine($"Byte array length must be even to convert to float array");
+                    LoggingService.LogInformation($"Byte array length must be even to convert to float array");
                     throw new ArgumentException("Byte array length must be even to convert to float array");
                 }
 
@@ -138,6 +140,7 @@ namespace SemanticImageSearchAIPCT.UI.Audio
             }
             catch (Exception e)
             {
+                LoggingService.LogError("ConvertBytesToFloatArray:", e);
                 throw;
             }
         }
@@ -208,8 +211,8 @@ namespace SemanticImageSearchAIPCT.UI.Audio
                 }
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"WaveIn_DataAvailable: {ex.Message}");
+            {              
+                LoggingService.LogError("Error WaveIn_DataAvailable:", ex);
             }
         }
 

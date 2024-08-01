@@ -57,8 +57,8 @@ namespace SemanticImageSearchAIPCT.UI
                     }
                 }
                 catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error while InitializeModels: {ex.Message}");
+                {                
+                    LoggingService.LogError("Error while InitializeModels:", ex);
                 }
             });
         }

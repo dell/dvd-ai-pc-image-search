@@ -82,8 +82,8 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
 
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error while initializing model directory: {ex.Message}");
+            {             
+                LoggingService.LogError("Error while initializing model directory:", ex);
             }
         }
 
@@ -95,8 +95,8 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
 
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error while initializing AudioSettings: {ex.Message}");
+            {                
+                LoggingService.LogError("Error while initializing AudioSettings:", ex);
             }
         }
 
@@ -151,8 +151,8 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
                 (MicCommand as AsyncRelayCommand)?.NotifyCanExecuteChanged();
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error while starting or stopping recording: {ex.Message}");
+            {        
+                LoggingService.LogError("Error while starting or stopping recording:", ex);
             }
         }
 
@@ -234,7 +234,8 @@ namespace SemanticImageSearchAIPCT.UI.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error while starting or stopping recording: {ex.Message}");
+           
+                LoggingService.LogError("Error while starting or stopping recording:", ex);
             }
         }
 

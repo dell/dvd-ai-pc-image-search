@@ -4,6 +4,7 @@ using System.Diagnostics;
 using SemanticImageSearchAIPCT.UI.Common;
 
 
+
 namespace SemanticImageSearchAIPCT.UI.Services
 {
     public class WhisperEncoderInferenceService : IWhisperEncoderInferenceService
@@ -42,10 +43,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
         public void SetExecutionProvider(ExecutionProviders ep)
         {
             Debug.WriteLine($"Setting ep as {ep}");
+            LoggingService.LogInformation($"Setting ep as {ep}");
             executionProvider = ep;
             _encoderSession?.Dispose();
-            _encoderSession = null;
-            // CreateSession();
+            _encoderSession = null;    
         }
 
         private (string? epName, Dictionary<string, string>? epOptions, string modelpath) UpdateSessionsOptions()
@@ -70,22 +71,13 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     default:
                         result = (null, null, "whisper_base_en-whisperencoder.onnx");
                         break;
-                }
-                Debug.WriteLine($"epName: {result.epName ?? "CPU"}");
-                if (result.epOptions != null)
-                {
-                    foreach (var option in result.epOptions)
-                    {
-                        Debug.WriteLine($"epOption: {option.Key} = {option.Value}");
-                    }
-                }
-                Debug.WriteLine($"Encoder modelpath: {result.modelpath}");
-
+                }            
+                LoggingService.LogInformation($"Encoder modelpath: {result.modelpath}");  
                 return result;
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error Encoder UpdateSessionsOptions: {ex.Message}");
+            {          
+                LoggingService.LogError("Error Encoder UpdateSessionsOptions:",ex);
                 throw;
             }
         }
@@ -114,8 +106,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 //InitializeOutputMetadata();
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error Encoder CreateSession: {ex.Message}");
+            {                 
+                LoggingService.LogError("Error Encoder CreateSession:", ex);
                 throw;
             }
         }
@@ -125,13 +117,17 @@ namespace SemanticImageSearchAIPCT.UI.Services
         /// </summary>
         public async Task InitializeEncoderModel()
         {
+           
+            var stopwatch = Stopwatch.StartNew(); // Start timing
+            var process = Process.GetCurrentProcess();
+            long initialMemoryUsage = process.WorkingSet64; // Get initial memory usage
             try
             {
                 if (_encoderSession == null)
                 {
                     CreateSession();
                 }
-                Debug.WriteLine("Initialize Encoder Model Dimensions");
+            
                 // Get the shape of k_cache_cross,v_cache_cross dynamically
                 var outputMetadata = _encoderSession.OutputMetadata;
 
@@ -143,7 +139,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     var dimensions = outputMetadata[name].Dimensions;
                     _outputDimensions[name] = dimensions;
 
-                    Debug.WriteLine($"Key: {name}, Dimensions: {string.Join(", ", dimensions)}");
+                    //Debug.WriteLine($"Key: {name}, Dimensions: {string.Join(", ", dimensions)}");
                 }
                 if (_outputDimensions.ContainsKey("output_0") && _outputDimensions["output_0"].Length == 4)
                 {
@@ -175,9 +171,28 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 }
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine($"Error Encoder InitializeOutputMetadata: {ex.Message}");
+            {                
+                LoggingService.LogError("Error Encoder InitializeOutputMetadata:", ex);
                 throw;
+            }
+            finally
+            {
+                
+                stopwatch.Stop(); // Stop timing
+               
+                long finalMemoryUsage = process.WorkingSet64; // Get final memory usage
+                var elapsed = stopwatch.Elapsed;
+                Debug.WriteLine($"Initialize Encoder Model started at: {DateTime.Now - elapsed}");
+                Debug.WriteLine($"Initialize Encoder Model ended at: {DateTime.Now}");
+                Debug.WriteLine($"Initialize Encoder Model duration: {elapsed.TotalSeconds} s");
+                
+                LoggingService.LogInformation($"Initialize Encoder Model started at: {DateTime.Now - elapsed}");
+                LoggingService.LogInformation($"Initialize Encoder Model ended at: {DateTime.Now}");
+                LoggingService.LogInformation($"Initialize Encoder Model duration: {elapsed.TotalSeconds} s");
+
+                //Debug.WriteLine($"Memory Encoder usage before: {initialMemoryUsage / 1024 / 1024} MB");
+                //Debug.WriteLine($"Memory Encoder usage after: {finalMemoryUsage / 1024 / 1024} MB");
+                //Debug.WriteLine($"Memory Encoder usage difference: {(finalMemoryUsage - initialMemoryUsage) / 1024 / 1024} MB");
             }
         }
 
@@ -200,8 +215,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 CreateSession();
             }
 
-            Debug.WriteLine($"k_cache_cross: {k_cache_cross_shape[0]}, {k_cache_cross_shape[1]}, {k_cache_cross_shape[2]}, {k_cache_cross_shape[3]}");
-            Debug.WriteLine($"v_cache_cross: {v_cache_cross_shape[0]}, {v_cache_cross_shape[1]}, {v_cache_cross_shape[2]}, {v_cache_cross_shape[3]}");
+            //Debug.WriteLine($"k_cache_cross: {k_cache_cross_shape[0]}, {k_cache_cross_shape[1]}, {k_cache_cross_shape[2]}, {k_cache_cross_shape[3]}");
+            //Debug.WriteLine($"v_cache_cross: {v_cache_cross_shape[0]}, {v_cache_cross_shape[1]}, {v_cache_cross_shape[2]}, {v_cache_cross_shape[3]}");
             int numSamples1 = input.Length / numChannels;
 
             int expectedLength = batchSize * numChannels * numSamples;
@@ -212,6 +227,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
 
             int[] inputShape = { batchSize, numChannels, numSamples };
+            var stopwatch = Stopwatch.StartNew(); // Start timing
+            DateTime startTime = DateTime.Now; // Capture start time
             try
             {
 
@@ -239,8 +256,23 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error while Inference: {ex.Message}");
+                LoggingService.LogError("Error Encoder Inference:", ex);        
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop(); // Stop timing
+                DateTime endTime = DateTime.Now; // Capture end time
+                var elapsed = stopwatch.Elapsed;
+
+                Debug.WriteLine($"Encoder Inference started at: {startTime}");
+                Debug.WriteLine($"Encoder Inference ended at: {endTime}");
+                Debug.WriteLine($"Encoder Inference duration: {elapsed.TotalSeconds} s");
+
+
+                LoggingService.LogInformation($"Encoder Inference started at: {startTime}");
+                LoggingService.LogInformation($"Encoder Inference ended at: {endTime}");
+                LoggingService.LogInformation($"Encoder Inference duration: {elapsed.TotalSeconds} s"); 
             }
 
         }

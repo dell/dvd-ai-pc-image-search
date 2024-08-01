@@ -4,9 +4,6 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 using System.Diagnostics;
 using SemanticImageSearchAIPCT.UI.Common;
 using SemanticImageSearchAIPCT.UI.Tokenizer;
-using Microsoft.Maui.Primitives;
-using System.Xml.Linq;
-
 namespace SemanticImageSearchAIPCT.UI.Services
 {
     public class WhisperDecoderInferenceService : IWhisperDecoderInferenceService
@@ -100,22 +97,14 @@ namespace SemanticImageSearchAIPCT.UI.Services
                         result = (null, null, "whisper_base_en-whisperdecoder.onnx");
                         break;
 
-                }
-                Debug.WriteLine($"epName: {result.epName ?? "CPU"}");
-                if (result.epOptions != null)
-                {
-                    foreach (var option in result.epOptions)
-                    {
-                        Debug.WriteLine($"epOption: {option.Key} = {option.Value}");
-                    }
-                }
-                Debug.WriteLine($"Decoder modelpath: {result.modelpath}");
-
+                }          
+                LoggingService.LogInformation($"Decoder modelpath: {result.modelpath}");
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error Decoder UpdateSessionsOptions: {ex.Message}");
+                LoggingService.LogError("Error Decoder UpdateSessionsOptions:", ex);
+           
                 throw;
             }
         }
@@ -146,7 +135,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error Decoder CreateSession: {ex.Message}");
+                LoggingService.LogError("Error Decoder CreateSession:", ex);               
                 throw;
             }
         }
@@ -155,7 +144,11 @@ namespace SemanticImageSearchAIPCT.UI.Services
         /// Dynamically initializes the dimensions for the model inputs and outputs based on the model metadata.
         /// </summary>
         public async Task InitializeDecoderModel()
-        {
+        {            
+
+            var stopwatch = Stopwatch.StartNew(); // Start timing
+            var process = Process.GetCurrentProcess();
+            long initialMemoryUsage = process.WorkingSet64; // Get initial memory usage
             try
             {
                 if (_decoderSession == null)
@@ -164,7 +157,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 }
 
                 // Get the shape dynamically
-                Debug.WriteLine("Initialize Decoder Model Dimensions");
+         
                 //Inputs
                 var input0Meta = _decoderSession.InputMetadata["k_cache_self"];
                 k_cache_self_shape = input0Meta.Dimensions;
@@ -187,7 +180,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     var dimensions = outputMetadata[name].Dimensions;
                     _outputDimensions[name] = dimensions;
 
-                    Debug.WriteLine($"Key: {name}, Dimensions: {string.Join(", ", dimensions)}");
+                    //Debug.WriteLine($"Key: {name}, Dimensions: {string.Join(", ", dimensions)}");
                 }
 
                 if (_outputDimensions.ContainsKey("output_0") && _outputDimensions["output_0"].Length == 3)
@@ -236,8 +229,30 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error Decoder InitializeModelDimensionsDynamically: {ex.Message}");
+                LoggingService.LogError("Erro Initialize Decoder Model:", ex);
+            
                 throw;
+            }
+            finally
+            {
+               
+                stopwatch.Stop(); // Stop timing
+             
+                long finalMemoryUsage = process.WorkingSet64; // Get final memory usage
+                var elapsed = stopwatch.Elapsed;
+          
+                Debug.WriteLine($"Initialize Decoder Model started at: {DateTime.Now - elapsed}");
+                Debug.WriteLine($"Initialize Decoder Model ended at: {DateTime.Now}");
+                Debug.WriteLine($"Initialize Decoder Model duration: {elapsed.TotalSeconds} s");
+
+                LoggingService.LogInformation($"Initialize Decoder Model started at: {DateTime.Now - elapsed}");
+                LoggingService.LogInformation($"Initialize Decoder Model ended at: {DateTime.Now}");
+                LoggingService.LogInformation($"Initialize Decoder Model duration: {elapsed.TotalSeconds} s");
+ 
+
+                //Debug.WriteLine($"Memory Decoder usage before: {initialMemoryUsage / 1024 / 1024} MB");
+                //Debug.WriteLine($"Memory Decoder usage after: {finalMemoryUsage / 1024 / 1024} MB");
+                //Debug.WriteLine($"Memory Decoder usage difference: {(finalMemoryUsage - initialMemoryUsage) / 1024 / 1024} MB");
             }
 
         }
@@ -329,7 +344,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                LoggingService.LogError("Error Decoder Inference:", ex);
                 throw;
             }
 
@@ -349,7 +364,8 @@ namespace SemanticImageSearchAIPCT.UI.Services
         public (float[,,] output_0, float[,,,] output_1, float[,,,] output_2) RunInference(int[,] x, int[,] index,
         float[,,,] k_cache_cross, float[,,,] v_cache_cross, float[,,,] k_cache_self, float[,,,] v_cache_self, InferenceSession _session)
         {
-
+            var stopwatch = Stopwatch.StartNew(); // Start timing
+            DateTime startTime = DateTime.Now; // Capture start time
             try
             {
                 // Convert input arrays to tensors
@@ -404,10 +420,25 @@ namespace SemanticImageSearchAIPCT.UI.Services
 
             }
             catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
+            {                
+                LoggingService.LogError("Error Decoder RunInference:", ex);
                 throw;
 
+            }
+            finally
+            {
+                stopwatch.Stop(); // Stop timing
+                DateTime endTime = DateTime.Now; // Capture end time
+                var elapsed = stopwatch.Elapsed;
+                Debug.WriteLine($"Decoder Inference started at: {startTime}");
+                Debug.WriteLine($"Decoder Inference ended at: {endTime}");
+                Debug.WriteLine($"Decoder Inference duration: {elapsed.TotalSeconds} s");
+
+                LoggingService.LogInformation($"Decoder Inference started at: {startTime}");
+                LoggingService.LogInformation($"Decoder Inference ended at: {endTime}");
+                LoggingService.LogInformation($"Decoder Inference duration: {elapsed.TotalSeconds} s");
+
+  
             }
         }
         #endregion
@@ -479,7 +510,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                LoggingService.LogError("Error Decoder ApplyTimestampRules:", ex);               
                 throw;
             }
         }
@@ -499,7 +530,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                LoggingService.LogError("Error Decoder LogSumExp:", ex);
                 throw;
             }
         }
@@ -528,7 +559,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                LoggingService.LogError("Error Decoder LogSoftmax:", ex);
                 throw;
             }
         }
