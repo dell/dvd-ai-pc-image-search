@@ -39,8 +39,12 @@ namespace SemanticImageSearchAIPCT.UI
             var app = builder.Build();
 
             ServiceHelper.Initialize(app.Services);
+                        
+            ServiceProvider = app.Services;
 
             return app;
         }
+
+        public static IServiceProvider ServiceProvider { get; private set; }
     }
 }

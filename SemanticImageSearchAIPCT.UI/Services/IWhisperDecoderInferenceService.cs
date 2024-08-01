@@ -9,6 +9,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
 
         List<int> DecoderInference(
          float[,,,] k_cache_cross, float[,,,] v_cache_cross);
-
+    
+        Task InitializeDecoderModel();
     }
 }

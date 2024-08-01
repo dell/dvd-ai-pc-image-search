@@ -4,6 +4,8 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 using System.Diagnostics;
 using SemanticImageSearchAIPCT.UI.Common;
 using SemanticImageSearchAIPCT.UI.Tokenizer;
+using Microsoft.Maui.Primitives;
+using System.Xml.Linq;
 
 namespace SemanticImageSearchAIPCT.UI.Services
 {
@@ -11,7 +13,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
     {
         #region Fields
 
-        private InferenceSession _session;
+        private InferenceSession? _decoderSession;
         private Conversion _conversion;
         private string _decoderModelPath;
 
@@ -69,7 +71,9 @@ namespace SemanticImageSearchAIPCT.UI.Services
         {
             Debug.WriteLine($"Setting ep as {ep}");
             executionProvider = ep;
-            CreateSession();
+            _decoderSession?.Dispose();
+            _decoderSession = null;
+            // CreateSession();
         }
 
         private (string? epName, Dictionary<string, string>? epOptions, string modelpath) UpdateSessionsOptions()
@@ -135,10 +139,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     sessionOptions.AppendExecutionProvider(epName, epOptions);
                 }
                 var _modelAIpath = Path.Combine(_modelDir, modelpath);
-                _session = new InferenceSession(_modelAIpath, sessionOptions);
+                _decoderSession = new InferenceSession(_modelAIpath, sessionOptions);
 
                 // Initialize model dimensions dynamically based on the model metadata
-                InitializeModelDimensionsDynamically();
+                //InitializeModelDimensionsDynamically();
             }
             catch (Exception ex)
             {
@@ -150,17 +154,22 @@ namespace SemanticImageSearchAIPCT.UI.Services
         /// <summary>
         /// Dynamically initializes the dimensions for the model inputs and outputs based on the model metadata.
         /// </summary>
-        private void InitializeModelDimensionsDynamically()
+        public async Task InitializeDecoderModel()
         {
             try
             {
-                // Get the shape dynamically
+                if (_decoderSession == null)
+                {
+                    CreateSession();
+                }
 
+                // Get the shape dynamically
+                Debug.WriteLine("Initialize Decoder Model Dimensions");
                 //Inputs
-                var input0Meta = _session.InputMetadata["k_cache_self"];
+                var input0Meta = _decoderSession.InputMetadata["k_cache_self"];
                 k_cache_self_shape = input0Meta.Dimensions;
 
-                var input1Meta = _session.InputMetadata["v_cache_self"];
+                var input1Meta = _decoderSession.InputMetadata["v_cache_self"];
                 v_cache_self_shape = input1Meta.Dimensions;
 
                 k_cache_self = new float[k_cache_self_shape[0], k_cache_self_shape[1], k_cache_self_shape[2], k_cache_self_shape[3]];
@@ -168,7 +177,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
 
 
                 ////outputs
-                var outputMetadata = _session.OutputMetadata;
+                var outputMetadata = _decoderSession.OutputMetadata;
 
                 _outputKeys = outputMetadata.Keys.ToList();
                 _outputDimensions = new Dictionary<string, int[]>();
@@ -248,7 +257,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
             try
             {
                 // Ensure the inference session is created
-                if (_session == null)
+                if (_decoderSession == null)
                 {
                     CreateSession();
                 }
@@ -267,7 +276,7 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     bool _sessionCreated = i != 0;
 
                     // Run inference and get logits and updated cache values
-                    var decoder_out = RunInference(x, index, k_cache_cross, v_cache_cross, k_cache_self, v_cache_self, _session);
+                    var decoder_out = RunInference(x, index, k_cache_cross, v_cache_cross, k_cache_self, v_cache_self, _decoderSession);
 
                     logits = decoder_out.Item1;
                     k_cache_self = decoder_out.Item2;

@@ -2,14 +2,14 @@
 using Microsoft.ML.OnnxRuntime;
 using System.Diagnostics;
 using SemanticImageSearchAIPCT.UI.Common;
- 
+
 
 namespace SemanticImageSearchAIPCT.UI.Services
 {
     public class WhisperEncoderInferenceService : IWhisperEncoderInferenceService
     {
         #region Fields
-        private InferenceSession _session;
+        private InferenceSession? _encoderSession;
         private Conversion _conversion;
         private string _encoderModelPath;
         private string _modelDir;
@@ -43,7 +43,9 @@ namespace SemanticImageSearchAIPCT.UI.Services
         {
             Debug.WriteLine($"Setting ep as {ep}");
             executionProvider = ep;
-            CreateSession();
+            _encoderSession?.Dispose();
+            _encoderSession = null;
+            // CreateSession();
         }
 
         private (string? epName, Dictionary<string, string>? epOptions, string modelpath) UpdateSessionsOptions()
@@ -106,10 +108,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
                     sessionOptions.AppendExecutionProvider(epName, epOptions);
                 }
                 var _modelAIpath = Path.Combine(_modelDir, modelpath);
-                _session = new InferenceSession(_modelAIpath, sessionOptions);
+                _encoderSession = new InferenceSession(_modelAIpath, sessionOptions);
 
                 // Initialize model dimensions dynamically based on the model metadata
-                InitializeOutputMetadata();
+                //InitializeOutputMetadata();
             }
             catch (Exception ex)
             {
@@ -121,13 +123,17 @@ namespace SemanticImageSearchAIPCT.UI.Services
         /// <summary>
         /// Dynamically initializes the dimensions for the model outputs based on the model metadata.
         /// </summary>
-        private void InitializeOutputMetadata()
+        public async Task InitializeEncoderModel()
         {
             try
             {
-
+                if (_encoderSession == null)
+                {
+                    CreateSession();
+                }
+                Debug.WriteLine("Initialize Encoder Model Dimensions");
                 // Get the shape of k_cache_cross,v_cache_cross dynamically
-                var outputMetadata = _session.OutputMetadata;
+                var outputMetadata = _encoderSession.OutputMetadata;
 
                 _outputKeys = outputMetadata.Keys.ToList();
                 _outputDimensions = new Dictionary<string, int[]>();
@@ -189,10 +195,10 @@ namespace SemanticImageSearchAIPCT.UI.Services
         public (float[,,,] output_0, float[,,,] output_1) RunInference(float[] input, int batchSize, int numChannels, int numSamples)
         {
             // Ensure the inference session is created
-            if (_session == null)
+            if (_encoderSession == null)
             {
                 CreateSession();
-            }        
+            }
 
             Debug.WriteLine($"k_cache_cross: {k_cache_cross_shape[0]}, {k_cache_cross_shape[1]}, {k_cache_cross_shape[2]}, {k_cache_cross_shape[3]}");
             Debug.WriteLine($"v_cache_cross: {v_cache_cross_shape[0]}, {v_cache_cross_shape[1]}, {v_cache_cross_shape[2]}, {v_cache_cross_shape[3]}");
@@ -219,11 +225,11 @@ namespace SemanticImageSearchAIPCT.UI.Services
                 List<string> outputs = _outputKeys;
                 using var runOptions = new RunOptions();
 
-                results = _session.Run(inputs, outputs);
+                results = _encoderSession.Run(inputs, outputs);
 
                 // Extract and convert the results to 4-dimensional arrays
                 var k_cache_cross_tensor = results.First(r => r.Name == _outputKeys[0]).AsTensor<float>();
-                var v_cache_cross_tensor = results.First(r => r.Name == _outputKeys[1]).AsTensor<float>();      
+                var v_cache_cross_tensor = results.First(r => r.Name == _outputKeys[1]).AsTensor<float>();
 
                 k_cache_cross = _conversion.To4DArray(k_cache_cross_tensor, k_cache_cross_shape[0], k_cache_cross_shape[1], k_cache_cross_shape[2], k_cache_cross_shape[3]);
                 v_cache_cross = _conversion.To4DArray(v_cache_cross_tensor, v_cache_cross_shape[0], v_cache_cross_shape[1], v_cache_cross_shape[2], v_cache_cross_shape[3]);

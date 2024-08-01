@@ -1,6 +1,7 @@
 ﻿#if WINDOWS
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using SemanticImageSearchAIPCT.UI.Services;
 using System.Diagnostics;
 using Windows.Graphics;
 #endif
@@ -37,9 +38,30 @@ namespace SemanticImageSearchAIPCT.UI
 #endif
             });
 
-
+            InitializeModels();
             MainPage = new AppShell();
         }
-     
+        private void InitializeModels()
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var encoderService = MauiProgram.ServiceProvider.GetService<IWhisperEncoderInferenceService>();
+                    var decoderService = MauiProgram.ServiceProvider.GetService<IWhisperDecoderInferenceService>();
+
+                    if (encoderService != null && decoderService != null)
+                    {
+                        await encoderService.InitializeEncoderModel();
+                        await decoderService.InitializeDecoderModel();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error while InitializeModels: {ex.Message}");
+                }
+            });
+        }
+
     }
 }
