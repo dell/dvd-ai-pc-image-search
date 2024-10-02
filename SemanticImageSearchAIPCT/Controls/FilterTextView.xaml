@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:vm="clr-namespace:SemanticImageSearchAIPCT.ViewModels"
+             x:Class="SemanticImageSearchAIPCT.Controls.FilterTextView">
+    <ContentView.BindingContext>
+        <vm:SearchViewModel />
+    </ContentView.BindingContext>
+    <VerticalStackLayout Margin="10, 0" Spacing="5">
+        <Label Text="Type or use the mic to describe what type of images you want to find." />
+        <HorizontalStackLayout>
+            <Entry Text="{Binding QueryText}" WidthRequest="410" IsEnabled="{Binding IsEnabled}">
+                <Entry.Behaviors>
+                    <toolkit:EventToCommandBehavior
+                        EventName="Completed"
+                        Command="{Binding StartQueryCommand}"/>
+                </Entry.Behaviors>
+            </Entry>
+            <Button 
+                IsEnabled="{Binding IsEnabled}"
+                BackgroundColor="Transparent" 
+                ImageSource="{AppThemeBinding Light=mic_light_mode.png, Dark=mic_dark_mode.png}" 
+                Command="{Binding MicCommand}" 
+                Margin="-100, 0, 0, 0"/>
+            <Button 
+                IsEnabled="{Binding IsEnabled}"
+                BackgroundColor="Transparent" 
+                ImageSource="{AppThemeBinding Light=send_light_mode.png, Dark=send_dark_mode.png}" 
+                Command="{Binding StartQueryCommand}"/>
+        </HorizontalStackLayout>
+    </VerticalStackLayout>
+</ContentView>

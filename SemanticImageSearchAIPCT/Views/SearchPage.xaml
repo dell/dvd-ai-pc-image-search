@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:SemanticImageSearchAIPCT.Views"
+             xmlns:controls="clr-namespace:SemanticImageSearchAIPCT.Controls"
+             xmlns:viewModels="clr-namespace:SemanticImageSearchAIPCT.ViewModels"
+             x:Class="SemanticImageSearchAIPCT.Views.SearchPage"
+             Title="SearchPage">
+    <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
+        <controls:EpSelectionView Grid.Row="0"></controls:EpSelectionView>
+        <controls:ImportFolderView Grid.Row="1"></controls:ImportFolderView>
+        <controls:FilterTextView Grid.Row="2"></controls:FilterTextView>
+        <controls:QueryResultView Grid.Row="3"></controls:QueryResultView>
+        <controls:StatusFooterView VerticalOptions="End" Grid.Row="4"></controls:StatusFooterView>
+    </Grid>
+</ContentPage>

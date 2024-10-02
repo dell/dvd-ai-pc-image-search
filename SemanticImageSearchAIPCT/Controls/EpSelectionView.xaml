@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:vm="clr-namespace:SemanticImageSearchAIPCT.ViewModels"
+             x:Class="SemanticImageSearchAIPCT.Controls.EpSelectionView">
+    <ContentView.BindingContext>
+        <vm:EpSelectionViewModel />
+    </ContentView.BindingContext>
+    <VerticalStackLayout Margin="10, 0">
+        <Label 
+            Text="Select ONNX Execution Provider"
+            VerticalOptions="Start" 
+            HorizontalOptions="Start" 
+            Margin="5, 0"/>
+        <Picker  
+                ItemsSource="{Binding EpDropDownOptions}"
+                SelectedItem="{Binding SelectedEp}" 
+                IsEnabled="{Binding IsInferencingReady}"
+                >
+                <!--Picker ItemDisplayBinding="{Binding Name}" is not working as expected-->
+        </Picker>
+    </VerticalStackLayout>
+</ContentView>

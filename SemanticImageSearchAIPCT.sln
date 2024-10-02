@@ -3,20 +3,28 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SemanticImageSearchAIPCT.UI", "SemanticImageSearchAIPCT.UI\SemanticImageSearchAIPCT.UI.csproj", "{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SemanticImageSearchAIPCT", "SemanticImageSearchAIPCT\SemanticImageSearchAIPCT.csproj", "{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|ARM64 = Debug|ARM64
 		Release|Any CPU = Release|Any CPU
+		Release|ARM64 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|ARM64.Build.0 = Debug|ARM64
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Debug|ARM64.Deploy.0 = Debug|ARM64
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|ARM64.ActiveCfg = Release|ARM64
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|ARM64.Build.0 = Release|ARM64
+		{95AFBC4F-73FA-400D-8884-AA00A22ADC7C}.Release|ARM64.Deploy.0 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
