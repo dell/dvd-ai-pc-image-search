@@ -13,12 +13,10 @@
             VerticalOptions="Start" 
             HorizontalOptions="Start" 
             Margin="5, 0"/>
-        <Picker  
-                ItemsSource="{Binding EpDropDownOptions}"
-                SelectedItem="{Binding SelectedEp}" 
-                IsEnabled="{Binding IsInferencingReady}"
-                >
-                <!--Picker ItemDisplayBinding="{Binding Name}" is not working as expected-->
-        </Picker>
+        <Picker
+            ItemsSource="{Binding EpDropDownOptions}"
+            ItemDisplayBinding="{Binding Name, x:DataType=vm:EpDropDownOption}"
+            SelectedItem="{Binding SelectedEp}" 
+            IsEnabled="{Binding IsInferencingReady}"/>
     </VerticalStackLayout>
 </ContentView>

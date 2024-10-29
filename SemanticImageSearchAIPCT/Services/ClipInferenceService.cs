@@ -316,7 +316,7 @@ namespace SemanticImageSearchAIPCT.Services
 
             for (int i = 0; i < numBatches; i++)
             {
-                LoggingService.LogInformation($"Processing image batch {i + 1}");
+                LoggingService.LogInformation($"Processing image batch {i + 1} / {numBatches}");
                 Application.Current?.Dispatcher.Dispatch(() => { ImageProcessingStatusUpdated?.Invoke(i + 1, fileCount); });
                 var batchedImages = filenames.GetRange(i * batchSize, batchSize);
                 var processedImage = BatchComputeImageFeatures(batchedImages)[0];

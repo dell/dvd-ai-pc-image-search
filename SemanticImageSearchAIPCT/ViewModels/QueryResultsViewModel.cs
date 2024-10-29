@@ -17,16 +17,14 @@ namespace SemanticImageSearchAIPCT.ViewModels
 
         private string? currentQuery;
 
-        public ObservableCollection<string> ImageResults { get; } = [];
+        public ObservableCollection<ImageResult> ImageResults { get; } = [];
 
-        private List<string> imageResults = [];
         private readonly IClipInferenceService _clipInferenceService;
 
         public QueryResultsViewModel()
         {
             _clipInferenceService = ServiceHelper.GetService<IClipInferenceService>();
 
-            //ImageResults.CollectionChanged += HandleImageResultsCollectionChanged;
             _clipInferenceService.QueryStarted += ClipInferenceService_QueryStartedEventHandler;
             _clipInferenceService.QueryCompleted += ClipInferenceService_QueryCompletedEventHandler;
         }
@@ -38,14 +36,14 @@ namespace SemanticImageSearchAIPCT.ViewModels
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    imageResults = await _clipInferenceService.GetTopNResultsAsync(2, 0.2f);
+                    var imageResults = await _clipInferenceService.GetTopNResultsAsync(3, 0.2f);
                     foreach (var image in imageResults)
                     {
-                        ImageResults.Add(image);
+                        ImageResults.Add(new ImageResult(image));
                     }
 
                     CurrentQueryText = $"Showing results for: '{currentQuery}'";
-                    LoggingService.LogDebug($"query completed getting results {string.Join(" ", ImageResults)}");
+                    LoggingService.LogDebug($"query completed getting results {string.Join(" ", ImageResults.Select(x => x.FileName))}");
                 });
             }
         }
@@ -59,9 +57,19 @@ namespace SemanticImageSearchAIPCT.ViewModels
                 ImageResults.Clear();
             });
         }
-        //private void HandleImageResultsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        //{
-        //    OnPropertyChanged(nameof(ImageResults));
-        //}
+    }
+
+    public partial class ImageResult: ObservableObject
+    {
+        [ObservableProperty]
+        public string filePath;
+        [ObservableProperty]
+        public string fileName;
+
+        public ImageResult(string _filePath)
+        {
+            filePath = _filePath;
+            fileName = Path.GetFileName(_filePath);
+        }
     }
 }

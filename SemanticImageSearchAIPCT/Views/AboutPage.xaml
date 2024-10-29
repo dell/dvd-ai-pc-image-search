@@ -6,7 +6,7 @@
     <ContentPage.BindingContext>
         <viewModels:AboutViewModel />
     </ContentPage.BindingContext>
-    <VerticalStackLayout Spacing="10" Margin="10">
+    <VerticalStackLayout Spacing="10" Margin="50" WidthRequest="500">
         <Label Text="{Binding Title}" VerticalOptions="End" />
         <Label Text="{Binding Message}" />
         <Button Text="Learn more about OpenAi-Clip..." Command="{Binding ShowOpenAiClipCommand}" />

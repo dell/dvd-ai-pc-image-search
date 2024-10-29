@@ -29,8 +29,7 @@ namespace SemanticImageSearchAIPCT.ViewModels
                 new EpDropDownOption {Name= "Qualcomm CPU", ExecutionProvider=ExecutionProviders.Cpu},
                 new EpDropDownOption {Name= "Qualcomm iNPU", ExecutionProvider=ExecutionProviders.QnnHtp}
             ];
-            //selectedEp = epDropDownOptions[0];
-            selectedEp = epDropDownOptions[1];
+            selectedEp = epDropDownOptions[0];
             OnSelectedEpChanged(selectedEp);
         }
 
@@ -48,7 +47,7 @@ namespace SemanticImageSearchAIPCT.ViewModels
                 {
                     try
                     {
-                        LoggingService.LogInformation($"Initializing services for {value}");
+                        LoggingService.LogInformation($"Initializing services for {value.Name}");
                         var stopwatch = Stopwatch.StartNew();
                         await _clipInferenceService.SetExecutionProviderAsync(value.ExecutionProvider);
                         await _whisperEncoderService.SetExecutionProviderAsync(value.ExecutionProvider);
@@ -56,8 +55,8 @@ namespace SemanticImageSearchAIPCT.ViewModels
                         //Task.WaitAll(initClip, initWhisperEncoder, initWhisperDecoder); // no benefit is observed
                         stopwatch.Stop();
                         IsInferencingReady = true;
-                        LoggingService.LogDebug($"Changing to {value} services took: {stopwatch.Elapsed.TotalSeconds} seconds.");
-                        LoggingService.LogInformation($"{value} services ready for inferencing");
+                        LoggingService.LogDebug($"Changing to {value.Name} services took: {stopwatch.Elapsed.TotalSeconds} seconds.");
+                        LoggingService.LogInformation($"{value.Name} services ready for inferencing");
                     }
                     catch (Exception ex)
                     {
@@ -68,13 +67,11 @@ namespace SemanticImageSearchAIPCT.ViewModels
         }
     }
 
-    public class EpDropDownOption
+    public partial class EpDropDownOption : ObservableObject
     {
-        public required string Name;
-        public required ExecutionProviders ExecutionProvider;
-        public override string ToString()
-        {
-            return Name;
-        }
+        [ObservableProperty]
+        public string name;
+        [ObservableProperty]
+        public ExecutionProviders executionProvider;
     }
 }
