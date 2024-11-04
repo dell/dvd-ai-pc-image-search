@@ -16,7 +16,6 @@ namespace SemanticImageSearchAIPCT.Services
         private float[,,,] k_cache_cross;
         private float[,,,] v_cache_cross;
         private ExecutionProviders executionProvider = ExecutionProviders.Cpu;
-        private Dictionary<string, string> qnnOptions = [];
 
         private List<string> _outputKeys;
         private Dictionary<string, int[]> _outputDimensions;
@@ -47,33 +46,33 @@ namespace SemanticImageSearchAIPCT.Services
             await Task.Run(() => { SetExecutionProvider(ep); });
         }
 
-        private (string? epName, string modelpath) UpdateSessionsOptions()
+        private (Dictionary<string, string>? epOptions, ModelCacheResult cacheResult) UpdateSessionsOptions()
         {
             try
             {
-                (string? epName, string modelpath) result;
-                qnnOptions = [];
+                ModelCacheResult cacheResult;
+                Dictionary<string, string> epOptions = [];
+
                 switch (executionProvider)
                 {
                     case ExecutionProviders.QnnCpu:
-                        qnnOptions["backend_path"] = "QnnCpu.dll";
-                        result = ("QNN", "whisper_base_en-whisperencoder.quant.onnx");
+                        epOptions["backend_path"] = "QnnCpu.dll";
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperencoder.quant.onnx");
                         break;
                     case ExecutionProviders.QnnHtp:
-                        qnnOptions["backend_path"] = "QnnHtp.dll";
-                        qnnOptions["enable_htp_fp16_precision"] = "1";
-                        result = ("QNN", "whisper_base_en-whisperencoder.onnx");
+                        epOptions["backend_path"] = "QnnHtp.dll";
+                        epOptions["enable_htp_fp16_precision"] = "1";
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperencoder.onnx");
                         break;
                     default:
-                        result = (null, "whisper_base_en-whisperencoder.onnx");
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperencoder.onnx");
                         break;
-                }            
-                LoggingService.LogDebug($"Encoder modelpath: {result.modelpath}");  
-                return result;
+                }
+                return (epOptions, cacheResult);
             }
             catch (Exception ex)
-            {          
-                LoggingService.LogError("Error Encoder UpdateSessionsOptions:",ex);
+            {
+                LoggingService.LogError("Error Encoder UpdateSessionsOptions:", ex);
                 throw;
             }
         }
@@ -89,14 +88,18 @@ namespace SemanticImageSearchAIPCT.Services
             {
                 var stopwatch = Stopwatch.StartNew();
                 using var sessionOptions = new SessionOptions();
-                var (epName, modelpath) = UpdateSessionsOptions();
+                var (epOptions, cacheResult) = UpdateSessionsOptions();
 
-                if (epName != null)
+                if (executionProvider.ToString().Contains("Qnn"))
                 {
-                    sessionOptions.AppendExecutionProvider(epName, qnnOptions);
+                    if (cacheResult.IsCachedVersion == false)
+                    {
+                        sessionOptions.AddSessionConfigEntry("ep.context_enable", "1");
+                        sessionOptions.AddSessionConfigEntry("ep.context_file_path", cacheResult.ResolvedModelPath);
+                    }
+                    sessionOptions.AppendExecutionProvider("QNN", epOptions);
                 }
-                var _modelAIpath = Path.Combine(_modelDir, modelpath);
-                _encoderSession = new InferenceSession(_modelAIpath, sessionOptions);
+                _encoderSession = new InferenceSession(cacheResult.CurrentModelPath, sessionOptions);
 
                 // Initialize model dimensions dynamically based on the model metadata
                 //InitializeOutputMetadata();
@@ -105,7 +108,7 @@ namespace SemanticImageSearchAIPCT.Services
                 LoggingService.LogDebug($"Create Image Encoder Session Duration: {stopwatch.Elapsed.TotalSeconds} seconds");
             }
             catch (Exception ex)
-            {                 
+            {
                 LoggingService.LogError("Error Encoder CreateSession:", ex);
                 throw;
             }
@@ -168,7 +171,7 @@ namespace SemanticImageSearchAIPCT.Services
                 LoggingService.LogDebug($"Whisper Encode Initialize Model Duration: {stopwatch.Elapsed.TotalSeconds} seconds");
             }
             catch (Exception ex)
-            {                
+            {
                 LoggingService.LogError("Error Encoder InitializeOutputMetadata:", ex);
                 throw;
             }
@@ -233,7 +236,7 @@ namespace SemanticImageSearchAIPCT.Services
             }
             catch (Exception ex)
             {
-                LoggingService.LogError("Error Encoder Inference:", ex);        
+                LoggingService.LogError("Error Encoder Inference:", ex);
                 throw;
             }
 

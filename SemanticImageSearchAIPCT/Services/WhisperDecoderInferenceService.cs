@@ -15,7 +15,6 @@ namespace SemanticImageSearchAIPCT.Services
         private string _decoderModelPath;
 
         private static ExecutionProviders executionProvider = ExecutionProviders.Cpu;
-        private static Dictionary<string, string> qnnOptions = new() { { "backend_path", "QnnHtp.dll" } };
         private static readonly int _token_Sot = 50257;
         private static readonly int _token_Eot = 50256;
 
@@ -28,10 +27,9 @@ namespace SemanticImageSearchAIPCT.Services
 
         private static readonly int _meanDecodeLen = 224;
         private static readonly int _sampleBegin = 1;
-        private double _precision = 0.02; // in seconds
-        private double _maxInitialTimestamp = 1.0; // in seconds
-        private int _maxInitialTimestampIndex;
-        private string _modelDir;
+        private readonly double _precision = 0.02; // in seconds
+        private readonly double _maxInitialTimestamp = 1.0; // in seconds
+        private readonly int _maxInitialTimestampIndex;
 
         private int[] k_cache_self_shape;
         private int[] v_cache_self_shape;
@@ -56,7 +54,6 @@ namespace SemanticImageSearchAIPCT.Services
         public WhisperDecoderInferenceService()
         {
             var _baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
-            _modelDir = Path.Combine(_baseDir, "AIModels");
             _maxInitialTimestampIndex = (int)(_maxInitialTimestamp / _precision);
         }
 
@@ -77,33 +74,30 @@ namespace SemanticImageSearchAIPCT.Services
             await Task.Run(() => { SetExecutionProvider(ep); });
         }
 
-        private (string? epName, Dictionary<string, string>? epOptions, string modelpath) UpdateSessionsOptions()
+        private (Dictionary<string, string>? epOptions, ModelCacheResult cacheResult) UpdateSessionsOptions()
         {
             try
             {
-                (string? epName, Dictionary<string, string>? epOptions, string modelpath) result;
+                ModelCacheResult cacheResult;
+                Dictionary<string, string> epOptions = [];
 
-                Dictionary<string, string> epOptions;
                 switch (executionProvider)
                 {
                     case ExecutionProviders.QnnCpu:
-                        qnnOptions["backend_path"] = "QnnCpu.dll";
-                        epOptions = qnnOptions;
-                        result = ("QNN", epOptions, "whisper_base_en-whisperdecoder.quant.onnx");
+                        epOptions.Add("backend_path", "QnnCpu.dll");
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperdecoder.quant.onnx");
                         break;
                     case ExecutionProviders.QnnHtp:
-                        qnnOptions["backend_path"] = "QnnHtp.dll";
-                        qnnOptions["enable_htp_fp16_precision"] = "1";
-                        epOptions = qnnOptions;
-                        result = ("QNN", epOptions, "whisper_base_en-whisperdecoder.onnx");
+                        epOptions.Add("backend_path", "QnnHtp.dll");
+                        epOptions.Add("enable_htp_fp16_precision", "1");
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperdecoder.onnx");
                         break;
                     default:
-                        result = (null, null, "whisper_base_en-whisperdecoder.onnx");
+                        cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "whisper_base_en-whisperdecoder.onnx");
                         break;
 
                 }
-                LoggingService.LogDebug($"Decoder modelpath: {result.modelpath}");
-                return result;
+                return (epOptions, cacheResult);
             }
             catch (Exception ex)
             {
@@ -126,14 +120,18 @@ namespace SemanticImageSearchAIPCT.Services
             {
                 var stopwatch = Stopwatch.StartNew(); // Start timing
                 using var sessionOptions = new SessionOptions();
-                var (epName, epOptions, modelpath) = UpdateSessionsOptions();
+                var (epOptions, cacheResult) = UpdateSessionsOptions();
 
-                if (epName != null)
+                if (executionProvider.ToString().Contains("Qnn"))
                 {
-                    sessionOptions.AppendExecutionProvider(epName, epOptions);
+                    if (cacheResult.IsCachedVersion == false)
+                    {
+                        sessionOptions.AddSessionConfigEntry("ep.context_enable", "1");
+                        sessionOptions.AddSessionConfigEntry("ep.context_file_path", cacheResult.ResolvedModelPath);
+                    }
+                    sessionOptions.AppendExecutionProvider("QNN", epOptions);
                 }
-                var _modelAIpath = Path.Combine(_modelDir, modelpath);
-                _decoderSession = new InferenceSession(_modelAIpath, sessionOptions);
+                _decoderSession = new InferenceSession(cacheResult.CurrentModelPath, sessionOptions);
 
                 // Initialize model dimensions dynamically based on the model metadata
                 //InitializeModelDimensionsDynamically();

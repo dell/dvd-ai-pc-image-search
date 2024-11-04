@@ -29,7 +29,8 @@ namespace SemanticImageSearchAIPCT.ViewModels
                 new EpDropDownOption {Name= "Qualcomm CPU", ExecutionProvider=ExecutionProviders.Cpu},
                 new EpDropDownOption {Name= "Qualcomm iNPU", ExecutionProvider=ExecutionProviders.QnnHtp}
             ];
-            selectedEp = epDropDownOptions[0];
+            //selectedEp = epDropDownOptions[0];
+            selectedEp = epDropDownOptions[1];
             OnSelectedEpChanged(selectedEp);
         }
 

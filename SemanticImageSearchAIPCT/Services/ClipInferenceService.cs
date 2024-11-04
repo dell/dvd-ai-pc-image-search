@@ -20,15 +20,12 @@ namespace SemanticImageSearchAIPCT.Services
         public event IClipInferenceService.ImageProcessingCompletedEvent? ImageProcessingCompleted;
         public event IClipInferenceService.ImageProcessingStatusUpdatedEvent? ImageProcessingStatusUpdated;
 
-        private readonly string BASE_DIRECTORY = AppDomain.CurrentDomain.BaseDirectory;
-
         [GeneratedRegex(@"\.jpg$|\.png$")]
         private partial Regex ImageExtensionsRegex();
 
         private readonly Dictionary<Guid, ImageModel> imageModelsById = [];
         private readonly List<Tuple<float, Guid>> querySimilarities = [];
         private readonly Dictionary<string, string> qnnOptions = [];
-        private string epName = string.Empty;
 
         // inference sessions
         private InferenceSession? tokenizeTextSession;
@@ -91,15 +88,12 @@ namespace SemanticImageSearchAIPCT.Services
         private void UpdateSessionsOptions()
         {
             qnnOptions.Clear();
-            epName = string.Empty;
             switch (executionProvider)
             {
                 case ExecutionProviders.QnnCpu:
-                    epName = "QNN";
                     qnnOptions["backend_path"] = "QnnCpu.dll";
                     break;
                 case ExecutionProviders.QnnHtp:
-                    epName = "QNN";
                     qnnOptions["backend_path"] = "QnnHtp.dll";
                     qnnOptions["enable_htp_fp16_precision"] = "1";
                     break;
@@ -197,15 +191,22 @@ namespace SemanticImageSearchAIPCT.Services
         private void CreateTokenizeTextSession()
         {
             // Create Tokenizer and tokenize the sentence.
-            var tokenizerOnnxPath = Path.Combine(BASE_DIRECTORY, "AIModels", "cliptok.onnx");
+            var cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "cliptok.onnx");
+
             using var sessionOptions = new SessionOptions();
             var customOp = "ortextensions.dll";
             sessionOptions.RegisterCustomOpLibraryV2(customOp, out var libraryHandle);
 
-            if (string.IsNullOrEmpty(epName) == false)
+            if (executionProvider.ToString().Contains("Qnn"))
             {
-                LoggingService.LogDebug($"Running with ep {epName} {qnnOptions?["backend_path"]}");
-                sessionOptions.AppendExecutionProvider(epName, qnnOptions);
+                LoggingService.LogDebug($"Running with ep QNN {qnnOptions?["backend_path"]}");
+
+                if (cacheResult.IsCachedVersion == false)
+                {
+                    sessionOptions.AddSessionConfigEntry("ep.context_enable", "1");
+                    sessionOptions.AddSessionConfigEntry("ep.context_file_path", cacheResult.ResolvedModelPath);
+                }
+                sessionOptions.AppendExecutionProvider("QNN", qnnOptions);
             }
             else
             {
@@ -213,7 +214,7 @@ namespace SemanticImageSearchAIPCT.Services
             }
 
             // Create an InferenceSession from the onnx clip tokenizer.
-            tokenizeTextSession = new InferenceSession(tokenizerOnnxPath, sessionOptions);
+            tokenizeTextSession = new InferenceSession(cacheResult.CurrentModelPath, sessionOptions);
         }
 
         private ReadOnlySpan<float> TextEncoder(int[] tokenizedInput)
@@ -254,16 +255,21 @@ namespace SemanticImageSearchAIPCT.Services
         {
             // Create input tensor. OrtValue will not copy, will read from managed memory
 
-            var textEncoderOnnxPath = Path.Combine(BASE_DIRECTORY, "AIModels", "openai_clip-cliptextencoder.onnx");
+            var cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "openai_clip-cliptextencoder.onnx");
 
             using var sessionOptions = new SessionOptions();
 
-            if (string.IsNullOrEmpty(epName) == false)
+            if (executionProvider.ToString().Contains("Qnn"))
             {
-                sessionOptions.AppendExecutionProvider(epName, qnnOptions);
+                if (cacheResult.IsCachedVersion == false)
+                {
+                    sessionOptions.AddSessionConfigEntry("ep.context_enable", "1");
+                    sessionOptions.AddSessionConfigEntry("ep.context_file_path", cacheResult.ResolvedModelPath);
+                }
+                sessionOptions.AppendExecutionProvider("QNN", qnnOptions);
             }
 
-            encodeTextSession = new InferenceSession(textEncoderOnnxPath, sessionOptions);
+            encodeTextSession = new InferenceSession(cacheResult.CurrentModelPath, sessionOptions);
         }
 
         private void CalculateSimilarities(string searchQuery)
@@ -327,8 +333,8 @@ namespace SemanticImageSearchAIPCT.Services
                 using var outputOrtValue = OrtValue.CreateTensorValueFromMemory<float>(result, [1, 512]);
                 using var inputOrtValue = OrtValue.CreateTensorValueFromMemory<float>(processedImage.Encodings?.ToArray(), [1, 3, 224, 224]);
 
-                var input_names = new string[]{ "image" };
-                var inputs = new OrtValue[]{ inputOrtValue };
+                var input_names = new string[] { "image" };
+                var inputs = new OrtValue[] { inputOrtValue };
 
                 var output_names = new string[] { "output_0" };
                 var outputs = new OrtValue[] { outputOrtValue };
@@ -357,16 +363,21 @@ namespace SemanticImageSearchAIPCT.Services
         }
         private void CreateImageEncodeSession()
         {
-            var textEncoderOnnxPath = Path.Combine(BASE_DIRECTORY, "AIModels", "openai_clip-clipimageencoder.onnx");
+            var cacheResult = ModelCacheHelper.GetModelOrCachePath(executionProvider, "openai_clip-clipimageencoder.onnx");
 
             using var sessionOptions = new SessionOptions();
 
-            if (string.IsNullOrEmpty(epName) == false)
+            if (executionProvider.ToString().Contains("Qnn"))
             {
-                sessionOptions.AppendExecutionProvider(epName, qnnOptions);
+                if (cacheResult.IsCachedVersion == false)
+                {
+                    sessionOptions.AddSessionConfigEntry("ep.context_enable", "1");
+                    sessionOptions.AddSessionConfigEntry("ep.context_file_path", cacheResult.ResolvedModelPath);
+                }
+                sessionOptions.AppendExecutionProvider("QNN", qnnOptions);
             }
 
-            imageEncodeSession = new InferenceSession(textEncoderOnnxPath, sessionOptions);
+            imageEncodeSession = new InferenceSession(cacheResult.CurrentModelPath, sessionOptions);
         }
 
         private List<ImageModel> BatchComputeImageFeatures(List<string> imageBatch)
