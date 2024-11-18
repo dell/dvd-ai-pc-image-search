@@ -7,10 +7,10 @@
              x:Class="SemanticImageSearchAIPCT.Views.SearchPage"
              Title="SearchPage">
     <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
-        <controls:EpSelectionView Grid.Row="0"></controls:EpSelectionView>
-        <controls:ImportFolderView Grid.Row="1"></controls:ImportFolderView>
-        <controls:FilterTextView Grid.Row="2"></controls:FilterTextView>
+        <controls:EpSelectionView Grid.Row="0" WidthRequest="500"></controls:EpSelectionView>
+        <controls:ImportFolderView Grid.Row="1" WidthRequest="500"></controls:ImportFolderView>
+        <controls:FilterTextView Grid.Row="2" WidthRequest="500"></controls:FilterTextView>
         <controls:QueryResultView Grid.Row="3"></controls:QueryResultView>
-        <controls:StatusFooterView VerticalOptions="End" Grid.Row="4"></controls:StatusFooterView>
+        <controls:StatusFooterView VerticalOptions="End" Grid.Row="4" Padding="5"></controls:StatusFooterView>
     </Grid>
 </ContentPage>

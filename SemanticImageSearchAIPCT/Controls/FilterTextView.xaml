@@ -10,7 +10,7 @@
     <VerticalStackLayout Margin="10, 0" Spacing="5">
         <Label Text="Type or use the mic to describe what type of images you want to find." />
         <HorizontalStackLayout>
-            <Entry Text="{Binding QueryText}" WidthRequest="410" IsEnabled="{Binding IsEnabled}">
+            <Entry Text="{Binding QueryText}" WidthRequest="480" IsEnabled="{Binding IsEnabled}">
                 <Entry.Behaviors>
                     <toolkit:EventToCommandBehavior
                         EventName="Completed"

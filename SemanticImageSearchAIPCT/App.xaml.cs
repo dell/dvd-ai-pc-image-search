@@ -1,4 +1,5 @@
 ﻿#if WINDOWS
+using Microsoft.Maui.Platform;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using SemanticImageSearchAIPCT.Services;
@@ -10,7 +11,7 @@ namespace SemanticImageSearchAIPCT
 {
     public partial class App : Application
     {
-        const int WindowWidth = 450;
+        const int WindowWidth = 1200;
         const int WindowHeight = 800;
 
         public App()
@@ -20,21 +21,23 @@ namespace SemanticImageSearchAIPCT
             Microsoft.Maui.Handlers.WindowHandler.Mapper.AppendToMapping(nameof(IWindow), (handler, view) =>
             {
 #if WINDOWS
-            var mauiWindow = handler.VirtualView;
-            var nativeWindow = handler.PlatformView;
-            nativeWindow.Activate();
-            IntPtr windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(nativeWindow);
-            WindowId windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
-            AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
-            appWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
+                var mauiWindow = handler.VirtualView;
+                var nativeWindow = handler.PlatformView;
+                nativeWindow.Activate();
+                IntPtr windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(nativeWindow);
+                WindowId windowId = Win32Interop.GetWindowIdFromWindow(windowHandle);
+                var dpi = nativeWindow.GetDisplayDensity();
+                AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
+                appWindow.Resize(new SizeInt32((int)(WindowWidth * dpi), (int)(WindowHeight * dpi)));
+                appWindow.Move(new PointInt32(300, 50));
 
-            if (appWindow.Presenter is OverlappedPresenter p)
-            {
-                p.IsResizable = true;
+                if (appWindow.Presenter is OverlappedPresenter p)
+                {
+                    p.IsResizable = true;
 
-                // these only have effect if XAML isn't responsible for drawing the titlebar.
-                p.IsMaximizable = true;
-            }
+                    // these only have effect if XAML isn't responsible for drawing the titlebar.
+                    p.IsMaximizable = true;
+                }
 #endif
             });
 

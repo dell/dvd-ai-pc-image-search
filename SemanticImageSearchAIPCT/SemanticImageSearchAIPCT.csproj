@@ -144,6 +144,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Update="AIModels\cliptok.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\openai_clip-clipimageencoder.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\openai_clip-clipimageencoder.qdq.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="AIModels\openai_clip-cliptextencoder.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	  <None Update="AIModels\whisper_base_en-whisperdecoder.onnx">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
