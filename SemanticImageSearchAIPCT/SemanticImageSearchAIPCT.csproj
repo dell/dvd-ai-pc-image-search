@@ -99,12 +99,12 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Maui" Version="9.0.2" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-		<PackageReference Include="FftSharp" Version="2.1.0" />
+		<PackageReference Include="FftSharp" Version="2.2.0" />
 		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
-		<PackageReference Include="Microsoft.ML.OnnxRuntime.Extensions" Version="0.11.0-dev-20240524-2333-8d8670f7" />
-		<PackageReference Include="Microsoft.ML.OnnxRuntime.QNN" Version="1.18.1" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.Extensions" Version="0.13.0" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.QNN" Version="1.20.0" />
 		<PackageReference Include="NAudio" Version="2.2.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="NumSharp" Version="0.30.0" />
@@ -115,7 +115,7 @@
 		<PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
 		<PackageReference Include="ScottPlot" Version="5.0.36" />
-		<PackageReference Include="System.Numerics.Tensors" Version="9.0.0-preview.6.24327.7" />
+		<PackageReference Include="System.Numerics.Tensors" Version="9.0.0" />
 		<PackageReference Include="LogMelSpectrogram" Version="1.0.4" Condition="'$(Platform)' != 'ARM64'" />
 		<PackageReference Include="LogMelSpectrogramARM64" Version="1.0.4" Condition="'$(Platform)' == 'ARM64'" /> 
   	</ItemGroup>
